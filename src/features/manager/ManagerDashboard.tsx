@@ -12,7 +12,8 @@ import {
     Monitor,
     Search,
     ChevronRight,
-    TrendingUp
+    TrendingUp,
+    Wallet
 } from 'lucide-react';
 
 const ManagerDashboard = () => {
