@@ -44,6 +44,9 @@ const AdminDashboard = () => {
     const [newManagerUsername, setNewManagerUsername] = useState('');
     const [newManagerPassword, setNewManagerPassword] = useState('');
     const [newManagerEmail, setNewManagerEmail] = useState('');
+    
+    // Expenses Global State
+    const [expenses, setExpenses] = useState<any[]>([]);
 
     useEffect(() => {
         if (user?.role === 'MANAGER') {
@@ -54,8 +57,16 @@ const AdminDashboard = () => {
             fetchBranches();
             fetchGlobalSales();
             fetchUsers();
+            fetchExpenses();
         }
     }, [user, navigate]);
+
+    const fetchExpenses = async () => {
+        try {
+            const res = await axios.get('http://127.0.0.1:8000/api/expenses/', { headers: { Authorization: `Bearer ${token}` } });
+            setExpenses(res.data);
+        } catch (e) { console.error(e); }
+    };
 
     const fetchBranches = async () => {
         try {
@@ -397,11 +408,54 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {/* Placeholder Tabs */}
-                {['expenses', 'reports'].includes(activeTab) && (
+                {/* Expenses Tab */}
+                {activeTab === 'expenses' && (
+                    <div className="animate-in fade-in duration-300">
+                        <div className="mb-6 flex justify-between items-center">
+                            <h2 className="text-xl font-semibold text-white">Global Procurement Ledger</h2>
+                            <button onClick={fetchExpenses} className="text-zinc-500 hover:text-white transition-colors">
+                                <Search size={18} />
+                            </button>
+                        </div>
+                        <div className="card p-0 overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="border-b border-zinc-800 text-zinc-500 text-xs font-medium bg-zinc-900/50">
+                                        <th className="p-4">Date</th>
+                                        <th className="p-4">Branch</th>
+                                        <th className="p-4">Source</th>
+                                        <th className="p-4">Specifications</th>
+                                        <th className="p-4 text-right">Total Settlement</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-sm">
+                                    {expenses.length > 0 ? (
+                                        expenses.map(exp => (
+                                            <tr key={exp.id} className="border-b border-zinc-900 hover:bg-zinc-900/40 transition-colors">
+                                                <td className="p-4 text-zinc-400">{exp.date}</td>
+                                                <td className="p-4 font-medium text-white">{exp.branch_name}</td>
+                                                <td className="p-4 text-zinc-300 uppercase">{exp.source_name}</td>
+                                                <td className="p-4 text-zinc-500">{exp.grams}g @ ${exp.rate_per_gram}</td>
+                                                <td className="p-4 text-right font-bold text-white">${Number(exp.total).toLocaleString()}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={5} className="p-10 text-center text-zinc-600 italic">No procurement records found globally.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Reports Tab */}
+                {activeTab === 'reports' && (
                     <div className="flex flex-col items-center justify-center h-96 text-zinc-600 animate-in fade-in duration-300">
-                        <p className="text-lg font-medium">Section Details Loading...</p>
-                        <p className="text-sm mt-1">Connectivity in progress</p>
+                        <BarChart3 size={48} className="mb-4 opacity-20" />
+                        <p className="text-lg font-medium">Enterprise Reporting Suite</p>
+                        <p className="text-sm mt-1">Advanced analytics modules coming soon</p>
                     </div>
                 )}
             </main>

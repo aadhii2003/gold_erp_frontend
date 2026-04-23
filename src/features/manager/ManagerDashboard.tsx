@@ -21,12 +21,20 @@ const ManagerDashboard = () => {
 
     const [activeTab, setActiveTab] = useState('dashboard');
     
+    // Auth & Basic State
     const [newUsername, setNewUsername] = useState('');
     const [newEmail, setNewEmail] = useState('');
     const [newPassword, setNewPassword] = useState('');
 
     const [sales, setSales] = useState<any[]>([]);
     const [staffList, setStaffList] = useState<any[]>([]);
+    
+    // Expense State
+    const [expenses, setExpenses] = useState<any[]>([]);
+    const [sourceName, setSourceName] = useState('');
+    const [ratePerGram, setRatePerGram] = useState<number | ''>('');
+    const [grams, setGrams] = useState<number | ''>('');
+    const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
 
     useEffect(() => {
         if (!user || user.role === 'STAFF') {
@@ -34,6 +42,7 @@ const ManagerDashboard = () => {
         } else {
             fetchSales();
             fetchStaff();
+            fetchExpenses();
         }
     }, [user, navigate]);
 
@@ -55,6 +64,15 @@ const ManagerDashboard = () => {
         } catch(e) { console.error(e); }
     };
 
+    const fetchExpenses = async () => {
+        try {
+            const res = await axios.get('http://127.0.0.1:8000/api/expenses/', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setExpenses(res.data);
+        } catch(e) { console.error(e); }
+    };
+
     const createStaff = async () => {
         if (!newUsername || !newPassword) return;
         try {
@@ -72,6 +90,28 @@ const ManagerDashboard = () => {
             setNewPassword('');
             fetchStaff();
         } catch(e) { alert('Authorization failed.'); }
+    };
+
+    const expenseTotal = (ratePerGram !== '' && grams !== '') ? Number(ratePerGram) * Number(grams) : 0;
+
+    const createExpense = async () => {
+        if (!sourceName || !ratePerGram || !grams) return;
+        try {
+            await axios.post('http://127.0.0.1:8000/api/expenses/create/', {
+                source_name: sourceName,
+                rate_per_gram: Number(ratePerGram),
+                grams: Number(grams),
+                total: expenseTotal,
+                date: expenseDate,
+                branch: user?.branch
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            
+            setSourceName('');
+            setRatePerGram('');
+            setGrams('');
+            fetchExpenses();
+            alert('Gold procurement expense recorded.');
+        } catch (e) { alert('Failed to record expense.'); }
     };
 
     const SidebarItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
@@ -100,6 +140,7 @@ const ManagerDashboard = () => {
                 <nav className="flex-1">
                     <SidebarItem id="dashboard" label="Overview" icon={LayoutDashboard} />
                     <SidebarItem id="ledger" label="Transaction Ledger" icon={ReceiptText} />
+                    <SidebarItem id="expenses" label="Branch Expenses" icon={Wallet} />
                     <SidebarItem id="terminals" label="Terminal Management" icon={Monitor} />
                 </nav>
 
@@ -196,6 +237,91 @@ const ManagerDashboard = () => {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Branch Expenses */}
+                {activeTab === 'expenses' && (
+                    <div className="animate-in fade-in duration-300 space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div className="md:col-span-1 space-y-6">
+                                <div className="card space-y-4">
+                                    <h3 className="text-lg font-medium text-white mb-2">Record Procurement</h3>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Gold Source Name</label>
+                                        <input 
+                                            type="text" 
+                                            value={sourceName} 
+                                            onChange={e => setSourceName(e.target.value)} 
+                                            className="input-field" 
+                                            placeholder="e.g. Local Miner / Supplier"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Rate / Gram</label>
+                                            <input 
+                                                type="number" 
+                                                value={ratePerGram} 
+                                                onChange={e => setRatePerGram(e.target.value ? Number(e.target.value) : '')} 
+                                                className="input-field font-semibold text-white" 
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Weight (Grams)</label>
+                                            <input 
+                                                type="number" 
+                                                value={grams} 
+                                                onChange={e => setGrams(e.target.value ? Number(e.target.value) : '')} 
+                                                className="input-field font-semibold text-white" 
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Date</label>
+                                        <input 
+                                            type="date" 
+                                            value={expenseDate} 
+                                            onChange={e => setExpenseDate(e.target.value)} 
+                                            className="input-field" 
+                                        />
+                                    </div>
+                                    <div className="p-4 bg-zinc-900 rounded-xl border border-zinc-800 mt-4">
+                                        <p className="text-xs text-zinc-500 uppercase font-bold">Automatic Calculation</p>
+                                        <p className="text-2xl font-bold text-white mt-1">${expenseTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                                    </div>
+                                    <button onClick={createExpense} className="btn-primary w-full py-3.5 mt-2">
+                                        Record Expense
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <h3 className="text-lg font-medium text-white mb-6">Branch Procurement Ledger</h3>
+                                <div className="card p-0 overflow-hidden">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="border-b border-zinc-800 text-zinc-500 text-xs font-medium bg-zinc-900/50">
+                                                <th className="p-4">Date</th>
+                                                <th className="p-4">Source</th>
+                                                <th className="p-4">Specs</th>
+                                                <th className="p-4 text-right">Total Cost</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="text-sm">
+                                            {expenses.map(exp => (
+                                                <tr key={exp.id} className="border-b border-zinc-900">
+                                                    <td className="p-4 text-zinc-500">{exp.date}</td>
+                                                    <td className="p-4 text-white font-medium">{exp.source_name}</td>
+                                                    <td className="p-4 text-zinc-400">{exp.grams}g @ ${exp.rate_per_gram}</td>
+                                                    <td className="p-4 text-right font-semibold text-white">${Number(exp.total).toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
