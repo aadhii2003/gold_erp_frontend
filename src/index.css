@@ -5,20 +5,70 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-zinc-950 text-zinc-200 antialiased;
+  :root {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    color-scheme: dark;
+    background-color: #000000;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    scrollbar-width: thin;
+    scrollbar-color: #27272a #09090b;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: #000000;
+    color: #fafafa;
+    overflow-x: hidden;
+    overscroll-behavior: none;
+    @apply antialiased;
+  }
+
+  /* Desktop App Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #09090b;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #27272a;
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3f3f46;
+  }
+
+  /* Native feel */
+  button, a, .card {
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  input, textarea {
+    user-select: text;
   }
 }
 
 @layer components {
   .input-field {
-    @apply w-full bg-zinc-900 border border-zinc-800 rounded-md px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-600 transition-all;
+    @apply w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-zinc-500 transition-colors;
   }
   .btn-primary {
-    @apply bg-white text-black font-medium rounded-md px-6 py-2.5 hover:bg-zinc-200 transition-all text-sm;
+    @apply bg-white text-black font-semibold px-4 py-2 rounded-lg hover:bg-zinc-200 transition-colors disabled:opacity-50;
   }
   .card {
-    @apply bg-zinc-900 border border-zinc-800 rounded-lg p-6 shadow-sm;
+    @apply bg-zinc-950 border border-zinc-900 rounded-xl p-6 shadow-sm;
   }
 }

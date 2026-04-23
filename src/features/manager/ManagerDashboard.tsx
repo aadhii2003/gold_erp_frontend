@@ -104,7 +104,7 @@ const ManagerDashboard = () => {
                 grams: Number(grams),
                 total: expenseTotal,
                 date: expenseDate,
-                branch: user?.branch
+                branch: (user as any)?.branch_id
             }, { headers: { Authorization: `Bearer ${token}` } });
             
             setSourceName('');
@@ -112,7 +112,7 @@ const ManagerDashboard = () => {
             setGrams('');
             fetchExpenses();
             alert('Gold procurement expense recorded.');
-        } catch (e) { alert('Failed to record expense.'); }
+        } catch (e) { alert('Failed to record expense. Please ensure all fields are filled correctly.'); }
     };
 
     const SidebarItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
