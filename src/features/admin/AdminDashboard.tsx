@@ -4,33 +4,46 @@ import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../app/store';
 import { setRates } from '../../app/store';
 import { useNavigate } from 'react-router-dom';
+import {
+    LayoutDashboard,
+    ReceiptText,
+    Wallet,
+    Store,
+    BarChart3,
+    LogOut,
+    Plus,
+    TrendingUp,
+    ChevronRight,
+    Search,
+    Users,
+    X
+} from 'lucide-react';
 
 const AdminDashboard = () => {
     const { token, user, rates } = useSelector((state: RootState) => state.auth);
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
+    const [activeTab, setActiveTab] = useState('dashboard');
+
+    // Rates State
     const [goldPrice, setGoldPrice] = useState(rates?.gold_price || 2000);
     const [forexRate, setForexRate] = useState(rates?.forex_rate || 3800);
-    
-    // User provisioning state
-    const [newUsername, setNewUsername] = useState('');
-    const [newEmail, setNewEmail] = useState('');
-    const [newPassword, setNewPassword] = useState('');
-    const [role, setRole] = useState('MANAGER');
-    const [selectedBranch, setSelectedBranch] = useState<string>('');
 
     // Branch state
     const [branchName, setBranchName] = useState('');
     const [xFactor, setXFactor] = useState(92.0);
-
-    // Edit states
-    const [editingBranch, setEditingBranch] = useState<any>(null);
-    const [editingUser, setEditingUser] = useState<any>(null);
-
     const [branches, setBranches] = useState<any[]>([]);
-    const [usersList, setUsersList] = useState<any[]>([]);
+    const [selectedBranchForManagers, setSelectedBranchForManagers] = useState<any>(null);
+
+    // Sales & Users State
     const [allSales, setAllSales] = useState<any[]>([]);
+    const [usersList, setUsersList] = useState<any[]>([]);
+    
+    // New Manager Form State
+    const [newManagerUsername, setNewManagerUsername] = useState('');
+    const [newManagerPassword, setNewManagerPassword] = useState('');
+    const [newManagerEmail, setNewManagerEmail] = useState('');
 
     useEffect(() => {
         if (user?.role === 'MANAGER') {
@@ -39,24 +52,30 @@ const AdminDashboard = () => {
             navigate('/pos');
         } else {
             fetchBranches();
-            fetchUsers();
             fetchGlobalSales();
+            fetchUsers();
         }
     }, [user, navigate]);
 
     const fetchBranches = async () => {
-        const res = await axios.get('http://127.0.0.1:8000/api/branches/', { headers: { Authorization: `Bearer ${token}` } });
-        setBranches(res.data);
+        try {
+            const res = await axios.get('http://127.0.0.1:8000/api/branches/', { headers: { Authorization: `Bearer ${token}` } });
+            setBranches(res.data);
+        } catch (e) { console.error(e); }
     };
 
     const fetchUsers = async () => {
-        const res = await axios.get('http://127.0.0.1:8000/api/users/', { headers: { Authorization: `Bearer ${token}` } });
-        setUsersList(res.data);
+        try {
+            const res = await axios.get('http://127.0.0.1:8000/api/users/', { headers: { Authorization: `Bearer ${token}` } });
+            setUsersList(res.data);
+        } catch (e) { console.error(e); }
     };
 
     const fetchGlobalSales = async () => {
-        const res = await axios.get('http://127.0.0.1:8000/api/sales/', { headers: { Authorization: `Bearer ${token}` } });
-        setAllSales(res.data);
+        try {
+            const res = await axios.get('http://127.0.0.1:8000/api/sales/', { headers: { Authorization: `Bearer ${token}` } });
+            setAllSales(res.data);
+        } catch (e) { console.error(e); }
     };
 
     const updateRates = async () => {
@@ -65,211 +84,332 @@ const AdminDashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             dispatch(setRates(res.data));
-            alert('Global market parity updated.');
-        } catch(e) { alert('Failed.'); }
-    };
-
-    const createUser = async () => {
-        try {
-            await axios.post('http://127.0.0.1:8000/api/users/create/', { 
-                username: newUsername, email: newEmail, password: newPassword, role: role, branch: selectedBranch || null
-            }, { headers: { Authorization: `Bearer ${token}` } });
-            setNewUsername(''); setNewEmail(''); setNewPassword('');
-            fetchUsers();
-            alert('Account Authorized.');
-        } catch(e) { alert('Error.'); }
+            alert('Market rates updated successfully.');
+        } catch (e) { alert('Update failed.'); }
     };
 
     const createBranch = async () => {
+        if (!branchName) return;
         try {
             await axios.post('http://127.0.0.1:8000/api/branches/create/', { name: branchName, x_factor: xFactor }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setBranchName(''); setXFactor(92.0);
             fetchBranches();
-            alert('Branch Node Registered.');
-        } catch(e) { alert('Error.'); }
+            alert('New branch added.');
+        } catch (e) { alert('Error adding branch.'); }
     };
 
-    const updateBranch = async () => {
+    const createManager = async (branchId: number) => {
+        if (!newManagerUsername || !newManagerPassword) return;
         try {
-            await axios.patch(`http://127.0.0.1:8000/api/branches/${editingBranch.id}/`, editingBranch, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setEditingBranch(null); fetchBranches();
-            alert('Branch Node Updated.');
-        } catch(e) { alert('Error.'); }
+            await axios.post('http://127.0.0.1:8000/api/users/create/', {
+                username: newManagerUsername,
+                password: newManagerPassword,
+                email: newManagerEmail,
+                role: 'MANAGER',
+                branch: branchId
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            setNewManagerUsername('');
+            setNewManagerPassword('');
+            setNewManagerEmail('');
+            fetchUsers();
+            alert('Manager assigned to branch.');
+        } catch (e) { alert('Failed to assign manager.'); }
     };
 
-    const updateUser = async () => {
-        try {
-            await axios.patch(`http://127.0.0.1:8000/api/users/${editingUser.id}/`, editingUser, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setEditingUser(null); fetchUsers();
-            alert('Identity Record Updated.');
-        } catch(e) { alert('Error.'); }
-    };
-
-    const deleteBranch = async (id: number) => {
-        if (!window.confirm('Decommission this branch?')) return;
-        try { await axios.delete(`http://127.0.0.1:8000/api/branches/${id}/`, { headers: { Authorization: `Bearer ${token}` } }); fetchBranches(); } catch(e) { alert('Failed.'); }
-    };
-
-    const deleteUser = async (id: number) => {
-        if (!window.confirm('Revoke access for this user?')) return;
-        try { await axios.delete(`http://127.0.0.1:8000/api/users/${id}/`, { headers: { Authorization: `Bearer ${token}` } }); fetchUsers(); } catch(e) { alert('Failed.'); }
-    };
+    const SidebarItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
+        <button
+            onClick={() => setActiveTab(id)}
+            className={`w-full flex items-center gap-3 px-6 py-3.5 transition-colors ${activeTab === id
+                    ? 'bg-zinc-800 text-white'
+                    : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                }`}
+        >
+            <Icon size={18} />
+            <span className="text-sm font-medium">{label}</span>
+        </button>
+    );
 
     return (
-        <div className="max-w-7xl mx-auto space-y-10 pb-20 p-4 md:p-0">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-zinc-800 pb-6 gap-4">
-                <div>
-                    <h2 className="text-4xl font-black tracking-tighter text-white italic">CENTRAL COMMAND</h2>
-                    <div className="text-zinc-500 font-mono text-[10px] mt-2 uppercase tracking-[0.3em]">High-Level Enterprise Audit & Node Governance</div>
+        <div className="flex h-[88vh] bg-zinc-950 font-sans overflow-hidden rounded-xl border border-zinc-900 shadow-2xl">
+            {/* Sidebar */}
+            <aside className="w-64 border-r border-zinc-900 flex flex-col bg-zinc-950">
+                <div className="p-6 border-b border-zinc-900 mb-4">
+                    <h1 className="text-xl font-bold text-white tracking-tight">Gold ERP Admin</h1>
                 </div>
-            </div>
 
-            {/* Global Constants Panel */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="card lg:col-span-2 border-l-4 border-white bg-zinc-900/50">
-                    <h3 className="text-sm font-black mb-6 text-zinc-500 uppercase tracking-widest">Global Market Parity</h3>
-                    <div className="grid grid-cols-2 gap-8">
-                        <div className="space-y-4">
-                            <label className="text-[10px] uppercase text-zinc-600 font-bold">Spot Gold (USD/oz)</label>
-                            <input type="number" step="0.01" value={goldPrice} onChange={e => setGoldPrice(Number(e.target.value))} className="bg-transparent border-b border-zinc-800 text-3xl font-black text-white w-full outline-none p-1" />
+                <nav className="flex-1">
+                    <SidebarItem id="dashboard" label="Dashboard" icon={LayoutDashboard} />
+                    <SidebarItem id="sales" label="Sales & Billings" icon={ReceiptText} />
+                    <SidebarItem id="expenses" label="Expenses" icon={Wallet} />
+                    <SidebarItem id="branches" label="Branches" icon={Store} />
+                    <SidebarItem id="reports" label="Reports" icon={BarChart3} />
+                </nav>
+
+                <div className="p-6 border-t border-zinc-900">
+                    <button
+                        onClick={() => navigate('/login')}
+                        className="w-full flex items-center gap-3 text-zinc-400 hover:text-red-400 transition-colors py-2 text-sm font-medium"
+                    >
+                        <LogOut size={16} />
+                        Logout
+                    </button>
+                </div>
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-1 overflow-y-auto p-8 relative">
+                {/* Header */}
+                <div className="mb-10 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-2xl font-semibold text-white capitalize">
+                            {activeTab.replace('-', ' ')}
+                        </h2>
+                        <p className="text-sm text-zinc-500 mt-1">Management Overview</p>
+                    </div>
+                    <div className="flex items-center gap-4 bg-zinc-900 px-4 py-2 rounded-lg border border-zinc-800">
+                        <div className="text-right">
+                            <p className="text-xs text-zinc-500">Administrator</p>
+                            <p className="text-sm font-medium text-white">{user?.username}</p>
                         </div>
-                        <div className="space-y-4">
-                            <label className="text-[10px] uppercase text-zinc-600 font-bold">Forex Parity (UGX:USD)</label>
-                            <input type="number" step="0.01" value={forexRate} onChange={e => setForexRate(Number(e.target.value))} className="bg-transparent border-b border-zinc-800 text-3xl font-black text-white w-full outline-none p-1 text-right" />
+                    </div>
+                </div>
+
+                {/* Dashboard Tab */}
+                {activeTab === 'dashboard' && (
+                    <div className="space-y-8 animate-in fade-in duration-300">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            {[
+                                { label: 'Total Revenue', value: `$${allSales.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}`, icon: TrendingUp, color: 'text-emerald-400' },
+                                { label: 'Transactions', value: allSales.length, icon: ReceiptText, color: 'text-blue-400' },
+                                { label: 'Branches', value: branches.length, icon: Store, color: 'text-purple-400' },
+                                { label: 'System Load', value: 'Optimal', icon: LayoutDashboard, color: 'text-amber-400' },
+                            ].map((stat, i) => (
+                                <div key={i} className="card p-6">
+                                    <div className={`p-2 w-fit rounded-lg bg-zinc-800 mb-4 ${stat.color}`}>
+                                        <stat.icon size={20} />
+                                    </div>
+                                    <p className="text-2xl font-semibold text-white">{stat.value}</p>
+                                    <p className="text-sm text-zinc-500 mt-1">{stat.label}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="card max-w-4xl">
+                            <h3 className="text-lg font-medium text-white mb-6">Global Market Rates</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-3">
+                                    <label className="text-sm text-zinc-500 font-medium">Spot Gold (USD/oz)</label>
+                                    <div className="flex items-center border-b border-zinc-800 pb-2">
+                                        <span className="text-zinc-600 mr-2 text-xl">$</span>
+                                        <input
+                                            type="number"
+                                            value={goldPrice}
+                                            onChange={e => setGoldPrice(Number(e.target.value))}
+                                            className="bg-transparent text-3xl font-semibold text-white w-full outline-none"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-sm text-zinc-500 font-medium">Forex Rate (UGX:USD)</label>
+                                    <div className="flex items-center border-b border-zinc-800 pb-2">
+                                        <input
+                                            type="number"
+                                            value={forexRate}
+                                            onChange={e => setForexRate(Number(e.target.value))}
+                                            className="bg-transparent text-3xl font-semibold text-white w-full outline-none text-right"
+                                        />
+                                        <span className="text-zinc-600 ml-2 text-sm font-medium">UGX</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button onClick={updateRates} className="btn-primary w-full mt-8">Apply Global Rates</button>
                         </div>
                     </div>
-                    <button onClick={updateRates} className="btn-primary w-full mt-8 py-3 text-[10px] font-black uppercase">Refresh Market Context</button>
-                </div>
+                )}
 
-                <div className="card space-y-4 border-zinc-800">
-                    <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-widest border-b border-zinc-800 pb-2">Registrar: New node</h3>
-                    <input type="text" placeholder="Branch Name" value={branchName} onChange={e => setBranchName(e.target.value)} className="input-field text-xs bg-black" />
-                    <input type="number" step="0.01" placeholder="X-Factor" value={xFactor} onChange={e => setXFactor(Number(e.target.value))} className="input-field text-xs bg-black" />
-                    <button onClick={createBranch} className="btn-primary w-full py-2 text-[10px] font-black">Register Node</button>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Branch Governance */}
-                <div className="card space-y-6">
-                    <h3 className="text-xl font-bold italic tracking-tighter uppercase border-b border-zinc-800 pb-2">Branch Governance</h3>
-                    <div className="space-y-3">
-                        {branches.map(b => (
-                            <div key={b.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-lg group hover:border-white/20 transition-all">
-                                {editingBranch?.id === b.id ? (
-                                    <div className="space-y-3">
-                                        <input type="text" value={editingBranch.name} onChange={e => setEditingBranch({...editingBranch, name: e.target.value})} className="input-field text-xs" />
-                                        <input type="number" value={editingBranch.x_factor} onChange={e => setEditingBranch({...editingBranch, x_factor: e.target.value})} className="input-field text-xs" />
-                                        <div className="flex gap-2">
-                                            <button onClick={updateBranch} className="btn-primary flex-1 py-1 text-[10px]">SAVE</button>
-                                            <button onClick={() => setEditingBranch(null)} className="flex-1 py-1 text-[10px] bg-zinc-800 text-white rounded">CANCEL</button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <div className="text-white font-black text-md">{b.name}</div>
-                                            <div className="text-[10px] text-zinc-500 font-mono tracking-widest font-black uppercase">XFACTOR: {b.x_factor}</div>
-                                        </div>
-                                        <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-all">
-                                            <button onClick={() => setEditingBranch(b)} className="text-blue-500 text-[10px] font-black uppercase">Edit</button>
-                                            <button onClick={() => deleteBranch(b.id)} className="text-red-900 hover:text-red-500 text-[10px] font-black uppercase">Decomm</button>
-                                        </div>
-                                    </div>
-                                )}
+                {/* Sales Tab */}
+                {activeTab === 'sales' && (
+                    <div className="animate-in fade-in duration-300">
+                        <div className="mb-6">
+                            <div className="relative max-w-sm">
+                                <Search className="absolute left-3 top-2.5 text-zinc-500" size={18} />
+                                <input type="text" placeholder="Search billing records..." className="bg-zinc-900 border border-zinc-800 rounded-md pl-10 pr-4 py-2 text-sm text-white w-full outline-none focus:border-zinc-500" />
                             </div>
-                        ))}
-                    </div>
-                </div>
+                        </div>
 
-                {/* Identity Licensing */}
-                <div className="card space-y-6">
-                    <h3 className="text-xl font-bold italic tracking-tighter uppercase border-b border-zinc-800 pb-2">Identity Licensing</h3>
-                    <div className="grid grid-cols-2 gap-3 pb-6 border-b border-zinc-800">
-                        <input type="text" placeholder="Username" value={newUsername} onChange={e => setNewUsername(e.target.value)} className="input-field text-xs bg-black h-9" />
-                        <input type="email" placeholder="Email" value={newEmail} onChange={e => setNewEmail(e.target.value)} className="input-field text-xs bg-black h-9" />
-                        <input type="password" placeholder="Cipher" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="input-field text-xs bg-black h-9" />
-                        <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)} className="input-field text-xs bg-black h-9">
-                            <option value="">-- NO NODE --</option>
-                            {branches.map(b => (
-                                <option key={b.id} value={b.id}>{b.name}</option>
-                            ))}
-                        </select>
-                        <select value={role} onChange={e => setRole(e.target.value)} className="input-field text-xs bg-black col-span-2 h-9 font-black uppercase">
-                            <option value="MANAGER">Manager Control</option>
-                            <option value="STAFF">Terminal Staff</option>
-                        </select>
-                        <button onClick={createUser} className="btn-primary py-2 text-[10px] font-black col-span-2">Authorize Access</button>
+                        <div className="card p-0 overflow-hidden">
+                            <table className="w-full text-left font-sans">
+                                <thead>
+                                    <tr className="border-b border-zinc-800 text-zinc-500 text-xs font-medium bg-zinc-900/50">
+                                        <th className="p-4">Date</th>
+                                        <th className="p-4">Vendor/Branch</th>
+                                        <th className="p-4">Product Details</th>
+                                        <th className="p-4 text-right">Total Amount</th>
+                                        <th className="p-4"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-sm">
+                                    {allSales.map(sale => (
+                                        <tr key={sale.id} className="border-b border-zinc-900 hover:bg-zinc-900/40 transition-colors group">
+                                            <td className="p-4 text-zinc-400">{new Date(sale.created_at).toLocaleDateString()}</td>
+                                            <td className="p-4">
+                                                <p className="text-white font-medium">{sale.vendor || 'Private'}</p>
+                                                <p className="text-xs text-zinc-600">{sale.branch_name}</p>
+                                            </td>
+                                            <td className="p-4">
+                                                <p className="text-zinc-300">{sale.product_name}</p>
+                                                <p className="text-xs text-zinc-600">{sale.actual_process_weight}g | {sale.actual_product_quality}%</p>
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <p className="text-white font-semibold">${Number(sale.subtotal).toLocaleString()}</p>
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <button className="text-zinc-600 hover:text-white"><ChevronRight size={18} /></button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
+                )}
 
-                    <div className="space-y-3">
-                        {usersList.map(u => (
-                            <div key={u.id} className="bg-zinc-900 border border-zinc-800 p-3 rounded group">
-                                {editingUser?.id === u.id ? (
-                                    <div className="space-y-3">
-                                        <input type="text" value={editingUser.username} onChange={e => setEditingUser({...editingUser, username: e.target.value})} className="input-field text-[10px]" />
-                                        <input type="email" value={editingUser.email} onChange={setEditingUser ? e => setEditingUser({...editingUser, email: e.target.value}) : undefined} className="input-field text-[10px]" />
-                                        <div className="flex gap-2">
-                                            <button onClick={updateUser} className="btn-primary flex-1 py-1 text-[10px]">SAVE</button>
-                                            <button onClick={() => setEditingUser(null)} className="flex-1 py-1 text-[10px] bg-zinc-800 text-white rounded">CANCEL</button>
+                {/* Branches Tab */}
+                {activeTab === 'branches' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
+                        <div className="lg:col-span-2 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {branches.map(b => (
+                                    <div 
+                                        key={b.id} 
+                                        onClick={() => setSelectedBranchForManagers(b)}
+                                        className={`card border-zinc-800 hover:border-zinc-700 transition-all cursor-pointer ${selectedBranchForManagers?.id === b.id ? 'ring-2 ring-white border-white' : ''}`}
+                                    >
+                                        <div className="flex justify-between items-start mb-4">
+                                            <Store className="text-zinc-600" size={24} />
+                                            <span className="text-[10px] bg-emerald-900/30 text-emerald-400 px-2 py-0.5 rounded font-medium">Online</span>
+                                        </div>
+                                        <h4 className="text-lg font-semibold text-white">{b.name}</h4>
+                                        <p className="text-sm text-zinc-500 mt-1">X-Factor: {b.x_factor}%</p>
+                                        <div className="mt-4 flex items-center text-xs text-zinc-400 font-medium group">
+                                            Manage Node Personnel <ChevronRight size={14} className="ml-1 group-hover:translate-x-1 transition-transform" />
                                         </div>
                                     </div>
-                                ) : (
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="text-white font-bold text-sm tracking-tighter">{u.username}</div>
-                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${u.role === 'ADMIN' ? 'bg-red-500 text-white' : 'bg-zinc-700 text-white'}`}>{u.role}</span>
-                                            </div>
-                                            <div className="text-[10px] text-zinc-600 font-mono italic">{u.branch_name || 'Global HQ'}</div>
-                                        </div>
-                                        <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-all">
-                                            <button onClick={() => setEditingUser(u)} className="text-blue-500 text-[10px] font-black uppercase">Edit</button>
-                                            <button onClick={() => deleteUser(u.id)} className="text-red-900 hover:text-red-500 text-[10px] font-black uppercase">Revoke</button>
-                                        </div>
-                                    </div>
-                                )}
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
+                        </div>
 
-            {/* Audit Log */}
-            <div className="card p-0 overflow-hidden shadow-2xl border-zinc-800">
-                <div className="bg-zinc-900 p-4 border-b border-zinc-800">
-                    <h3 className="text-lg font-black italic tracking-tighter uppercase text-white">Global Enterprise Auditor</h3>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left font-mono text-[11px]">
-                        <thead>
-                            <tr className="border-b border-zinc-800 text-zinc-600 uppercase text-[9px] tracking-[0.2em] bg-black/40">
-                                <th className="p-4">Timestamp</th><th className="p-4">Origin/Vendor</th><th className="p-4">Identity</th><th className="p-4">Material Spec</th><th className="p-4 text-right">Settlement (USD)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {allSales.map(sale => (
-                                <tr key={sale.id} className="border-b border-zinc-900 hover:bg-white/5 transition-all">
-                                    <td className="p-4 text-zinc-500">{new Date(sale.created_at).toLocaleString()}</td>
-                                    <td className="p-4"><div className="text-white font-bold uppercase">{sale.vendor || 'UNKNOWN'}</div><div className="text-[9px] text-zinc-700 font-black tracking-widest">{sale.branch_name}</div></td>
-                                    <td className="p-4 text-zinc-300">{sale.staff_name}</td>
-                                    <td className="p-4"><div className="text-zinc-400 font-bold">{sale.product_name}</div><div className="text-[9px] text-zinc-700">{sale.actual_process_weight}g @ {sale.actual_product_quality}%</div></td>
-                                    <td className="p-4 text-right"><div className="text-white font-black text-sm">${Number(sale.subtotal).toLocaleString()}</div><div className="text-[8px] text-zinc-800 font-black">X-FACTOR: {sale.x_factor}</div></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                        <div className="card h-fit sticky top-0">
+                            <div className="flex items-center gap-2 mb-6 text-white font-medium">
+                                <Plus size={18} /> Add New Node
+                            </div>
+                            <div className="space-y-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs text-zinc-500 font-medium">Branch Name</label>
+                                    <input type="text" value={branchName} onChange={e => setBranchName(e.target.value)} className="input-field" placeholder="Enter name" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-zinc-500 font-medium">X-Factor (%)</label>
+                                    <input type="number" value={xFactor} onChange={e => setXFactor(Number(e.target.value))} className="input-field" />
+                                </div>
+                                <button onClick={createBranch} className="btn-primary w-full mt-2">Create Branch</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Manager Detail View (Modal-ish overlay or lateral panel) */}
+                {selectedBranchForManagers && activeTab === 'branches' && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
+                            <div className="p-6 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+                                <div>
+                                    <h3 className="text-xl font-semibold text-white">{selectedBranchForManagers.name}</h3>
+                                    <p className="text-xs text-zinc-500">Personnel Management</p>
+                                </div>
+                                <button onClick={() => setSelectedBranchForManagers(null)} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-colors">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            
+                            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                                {/* Current Managers */}
+                                <div>
+                                    <h4 className="text-sm font-medium text-zinc-400 mb-4 uppercase tracking-widest flex items-center gap-2">
+                                        <Users size={16} /> Current Branch Managers
+                                    </h4>
+                                    <div className="space-y-3">
+                                        {usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').length > 0 ? (
+                                            usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').map(m => (
+                                                <div key={m.id} className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg flex justify-between items-center">
+                                                    <div>
+                                                        <p className="text-sm font-medium text-white">{m.username}</p>
+                                                        <p className="text-xs text-zinc-600">{m.email}</p>
+                                                    </div>
+                                                    <span className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-1 rounded">ACTIVE</span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-zinc-600 italic py-4">No managers assigned to this branch yet.</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Create Manager Form */}
+                                <div className="pt-6 border-t border-zinc-800">
+                                    <h4 className="text-sm font-medium text-zinc-400 mb-4 uppercase tracking-widest flex items-center gap-2">
+                                        <Plus size={16} /> Assign New Manager
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Username" 
+                                            value={newManagerUsername} 
+                                            onChange={e => setNewManagerUsername(e.target.value)} 
+                                            className="input-field" 
+                                        />
+                                        <input 
+                                            type="email" 
+                                            placeholder="Email" 
+                                            value={newManagerEmail} 
+                                            onChange={e => setNewManagerEmail(e.target.value)} 
+                                            className="input-field" 
+                                        />
+                                        <input 
+                                            type="password" 
+                                            placeholder="Password" 
+                                            value={newManagerPassword} 
+                                            onChange={e => setNewManagerPassword(e.target.value)} 
+                                            className="input-field col-span-1 md:col-span-2" 
+                                        />
+                                        <button 
+                                            onClick={() => createManager(selectedBranchForManagers.id)} 
+                                            className="btn-primary col-span-1 md:col-span-2 mt-2"
+                                        >
+                                            Confirm Manager Assignment
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Placeholder Tabs */}
+                {['expenses', 'reports'].includes(activeTab) && (
+                    <div className="flex flex-col items-center justify-center h-96 text-zinc-600 animate-in fade-in duration-300">
+                        <p className="text-lg font-medium">Section Details Loading...</p>
+                        <p className="text-sm mt-1">Connectivity in progress</p>
+                    </div>
+                )}
+            </main>
         </div>
     );
 };
 
 export default AdminDashboard;
+
+
+

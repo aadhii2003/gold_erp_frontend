@@ -84,9 +84,6 @@ const App = () => {
             {user.role === 'ADMIN' && (
               <button className="text-sm bg-zinc-800 px-3 py-1 rounded" onClick={() => navigate('/admin')}>Admin</button>
             )}
-            {(user.role === 'ADMIN' || user.role === 'MANAGER') && (
-              <button className="text-sm bg-zinc-800 px-3 py-1 rounded" onClick={() => navigate('/manager')}>Manager</button>
-            )}
             {user.role === 'STAFF' && (
               <button className="text-sm bg-zinc-800 px-3 py-1 rounded" onClick={() => navigate('/pos')}>POS Billing</button>
             )}

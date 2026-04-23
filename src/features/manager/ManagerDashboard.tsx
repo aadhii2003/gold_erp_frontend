@@ -3,10 +3,23 @@ import axios from 'axios';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../app/store';
 import { useNavigate } from 'react-router-dom';
+import { 
+    LayoutDashboard, 
+    Users, 
+    ReceiptText, 
+    LogOut,
+    Plus,
+    Monitor,
+    Search,
+    ChevronRight,
+    TrendingUp
+} from 'lucide-react';
 
 const ManagerDashboard = () => {
     const { token, user } = useSelector((state: RootState) => state.auth);
     const navigate = useNavigate();
+
+    const [activeTab, setActiveTab] = useState('dashboard');
     
     const [newUsername, setNewUsername] = useState('');
     const [newEmail, setNewEmail] = useState('');
@@ -43,6 +56,7 @@ const ManagerDashboard = () => {
     };
 
     const createStaff = async () => {
+        if (!newUsername || !newPassword) return;
         try {
             await axios.post('http://127.0.0.1:8000/api/users/create/', { 
                 username: newUsername, 
@@ -52,107 +66,173 @@ const ManagerDashboard = () => {
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            alert('Staff Authorized.');
+            alert('Staff Authorization Issued.');
             setNewUsername('');
             setNewEmail('');
             setNewPassword('');
             fetchStaff();
-        } catch(e) { alert('Error creating staff.'); }
+        } catch(e) { alert('Authorization failed.'); }
     };
 
-    const deleteStaff = async (id: number) => {
-        if (!window.confirm('Deauthorize this terminal?')) return;
-        try {
-            await axios.delete(`http://127.0.0.1:8000/api/users/${id}/`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            fetchStaff();
-        } catch(e) { alert('Operation failed.'); }
-    };
+    const SidebarItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
+        <button 
+            onClick={() => setActiveTab(id)}
+            className={`w-full flex items-center gap-3 px-6 py-3.5 transition-colors ${
+                activeTab === id 
+                ? 'bg-zinc-800 text-white' 
+                : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+            }`}
+        >
+            <Icon size={18} />
+            <span className="text-sm font-medium">{label}</span>
+        </button>
+    );
 
     return (
-        <div className="max-w-7xl mx-auto space-y-8 pb-12 p-4 md:p-0">
-            <div className="flex justify-between items-center border-b border-zinc-800 pb-4">
-                <div>
-                    <h2 className="text-3xl font-black tracking-tighter italic">MANAGER CONSOLE</h2>
-                    <div className="text-zinc-500 font-mono text-[10px] mt-1 uppercase tracking-widest">Node Ownership: {user?.branch_name || 'Assigned Branch'}</div>
+        <div className="flex h-[88vh] bg-zinc-950 font-sans overflow-hidden rounded-xl border border-zinc-900 shadow-2xl">
+            {/* Sidebar */}
+            <aside className="w-64 border-r border-zinc-900 flex flex-col bg-zinc-950">
+                <div className="p-6 border-b border-zinc-900 mb-4">
+                    <h1 className="text-xl font-bold text-white tracking-tight">Manager Node</h1>
+                    <p className="text-xs text-zinc-600 mt-1 uppercase font-medium">{user?.branch_name || 'Assigned Branch'}</p>
                 </div>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                <div className="lg:col-span-1 space-y-8">
-                    <div className="card h-fit border-l-4 border-white bg-zinc-900 shadow-xl">
-                        <h3 className="text-md font-bold mb-4 uppercase tracking-[0.2em] text-zinc-500">PROVISION TERMINAL</h3>
-                        <div className="space-y-4">
-                            <input type="text" placeholder="Access Username" value={newUsername} onChange={e => setNewUsername(e.target.value)} className="input-field text-xs" />
-                            <input type="email" placeholder="Email Contact" value={newEmail} onChange={e => setNewEmail(e.target.value)} className="input-field text-xs" />
-                            <input type="password" placeholder="Terminal Passkey" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="input-field text-xs" />
-                            <button onClick={createStaff} className="btn-primary w-full py-3 text-[10px] font-black uppercase">Authorize Terminal</button>
+                <nav className="flex-1">
+                    <SidebarItem id="dashboard" label="Overview" icon={LayoutDashboard} />
+                    <SidebarItem id="ledger" label="Transaction Ledger" icon={ReceiptText} />
+                    <SidebarItem id="terminals" label="Terminal Management" icon={Monitor} />
+                </nav>
+
+                <div className="p-6 border-t border-zinc-900">
+                    <button 
+                        onClick={() => navigate('/login')}
+                        className="w-full flex items-center gap-3 text-zinc-400 hover:text-red-400 transition-colors py-2 text-sm font-medium"
+                    >
+                        <LogOut size={16} />
+                        Logout
+                    </button>
+                </div>
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-1 overflow-y-auto p-8">
+                {/* Header */}
+                <div className="mb-10 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-2xl font-semibold text-white capitalize">
+                            {activeTab}
+                        </h2>
+                        <p className="text-sm text-zinc-500 mt-1">Operational Control Center</p>
+                    </div>
+                </div>
+
+                {/* Dashboard / Overview */}
+                {activeTab === 'dashboard' && (
+                    <div className="space-y-8 animate-in fade-in duration-300">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="card p-6">
+                                <TrendingUp className="text-emerald-400 mb-4" size={24} />
+                                <p className="text-2xl font-semibold text-white">${sales.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}</p>
+                                <p className="text-sm text-zinc-500 mt-1">Branch Revenue</p>
+                            </div>
+                            <div className="card p-6">
+                                <ReceiptText className="text-blue-400 mb-4" size={24} />
+                                <p className="text-2xl font-semibold text-white">{sales.length}</p>
+                                <p className="text-sm text-zinc-500 mt-1">Daily Transactions</p>
+                            </div>
+                            <div className="card p-6">
+                                <Users className="text-purple-400 mb-4" size={24} />
+                                <p className="text-2xl font-semibold text-white">{staffList.filter(s => s.role === 'STAFF').length}</p>
+                                <p className="text-sm text-zinc-500 mt-1">Active Staff</p>
+                            </div>
+                        </div>
+
+                        <div className="card">
+                            <h3 className="text-lg font-medium text-white mb-6">Recent Activity</h3>
+                            <div className="space-y-4">
+                                {sales.slice(0, 5).map(s => (
+                                    <div key={s.id} className="flex justify-between items-center bg-zinc-900/50 p-4 rounded border border-zinc-800">
+                                        <div>
+                                            <p className="text-sm font-medium text-white">{s.product_name}</p>
+                                            <p className="text-xs text-zinc-500">{new Date(s.created_at).toLocaleTimeString()}</p>
+                                        </div>
+                                        <p className="text-sm font-bold text-emerald-400">+${Number(s.subtotal).toLocaleString()}</p>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
+                )}
 
-                    <div className="card bg-black/40 border-zinc-800">
-                        <h3 className="text-sm font-bold mb-4 text-zinc-500 uppercase tracking-widest">ACTIVE TERMINALS</h3>
-                        <div className="space-y-3">
+                {/* Ledger Tab */}
+                {activeTab === 'ledger' && (
+                    <div className="animate-in fade-in duration-300">
+                        <div className="card p-0 overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="border-b border-zinc-800 text-zinc-500 text-xs font-medium bg-zinc-900/50">
+                                        <th className="p-4">Time</th>
+                                        <th className="p-4">Terminal</th>
+                                        <th className="p-4">Material Details</th>
+                                        <th className="p-4">Specs</th>
+                                        <th className="p-4 text-right">Settlement</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-sm">
+                                    {sales.map(sale => (
+                                        <tr key={sale.id} className="border-b border-zinc-900 hover:bg-zinc-900/40 transition-colors">
+                                            <td className="p-4 text-zinc-400">{new Date(sale.created_at).toLocaleTimeString()}</td>
+                                            <td className="p-4 text-white font-medium">{sale.staff_name}</td>
+                                            <td className="p-4">
+                                                <p className="text-white">{sale.product_name}</p>
+                                                <p className="text-xs text-zinc-600">{sale.quantity_grams}g</p>
+                                            </td>
+                                            <td className="p-4 text-zinc-400">{sale.actual_product_quality}% Purity</td>
+                                            <td className="p-4 text-right">
+                                                <p className="text-white font-semibold">${Number(sale.subtotal).toLocaleString()}</p>
+                                                <p className="text-xs text-zinc-600">{Number(sale.total_ugx).toLocaleString()} UGX</p>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Terminals Tab */}
+                {activeTab === 'terminals' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
+                        <div className="lg:col-span-2 space-y-4">
                             {staffList.filter(s => s.role === 'STAFF').map(s => (
-                                <div key={s.id} className="bg-zinc-900 border border-zinc-800 p-3 rounded flex justify-between items-center group">
-                                    <div className="space-y-1">
-                                        <div className="font-bold text-white text-xs">{s.username}</div>
-                                        <div className="text-[8px] text-zinc-600 font-mono italic">Seen: {s.last_login ? new Date(s.last_login).toLocaleDateString() : 'Never'}</div>
+                                <div key={s.id} className="card flex justify-between items-center">
+                                    <div className="flex items-center gap-4">
+                                        <Monitor className="text-zinc-600" size={24} />
+                                        <div>
+                                            <p className="text-white font-semibold">{s.username}</p>
+                                            <p className="text-xs text-zinc-500">Active Node</p>
+                                        </div>
                                     </div>
-                                    <button onClick={() => deleteStaff(s.id)} className="opacity-0 group-hover:opacity-100 text-red-900 hover:text-red-500 text-[10px] uppercase font-black transition-all">Revoke</button>
+                                    <ChevronRight className="text-zinc-700" size={18} />
                                 </div>
                             ))}
                         </div>
-                    </div>
-                </div>
 
-                <div className="card lg:col-span-3 border-t-4 border-zinc-500 shadow-2xl">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-bold italic tracking-tighter uppercase">Branch Node Ledger</h3>
+                        <div className="card h-fit">
+                            <h3 className="text-white font-medium mb-6 flex items-center gap-2"><Plus size={18} /> Authorize Terminal</h3>
+                            <div className="space-y-4">
+                                <input type="text" placeholder="Username" value={newUsername} onChange={e => setNewUsername(e.target.value)} className="input-field" />
+                                <input type="email" placeholder="Email (Optional)" value={newEmail} onChange={e => setNewEmail(e.target.value)} className="input-field" />
+                                <input type="password" placeholder="Access Passkey" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="input-field" />
+                                <button onClick={createStaff} className="btn-primary w-full mt-2">Provision Node</button>
+                            </div>
+                        </div>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left font-mono text-[11px]">
-                            <thead>
-                                <tr className="border-b border-zinc-800 text-zinc-600 uppercase text-[9px] tracking-[0.2em]">
-                                    <th className="pb-3 px-2">Date/Time</th>
-                                    <th className="pb-3 px-2">Terminal</th>
-                                    <th className="pb-3 px-2">Material Info</th>
-                                    <th className="pb-3 px-2">Purity/Density</th>
-                                    <th className="pb-3 px-2">Metric (g)</th>
-                                    <th className="pb-3 px-2 text-right">Settlement (USD)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sales.map(sale => (
-                                    <tr key={sale.id} className="border-b border-zinc-900 hover:bg-zinc-900/40 group transition-all">
-                                        <td className="py-4 px-2 text-zinc-500">
-                                            {new Date(sale.created_at).toLocaleDateString()}<br/>
-                                            <span className="text-[9px]">{new Date(sale.created_at).toLocaleTimeString()}</span>
-                                        </td>
-                                        <td className="py-4 px-2 text-zinc-300 font-bold">{sale.staff_name}</td>
-                                        <td className="py-4 px-2">
-                                            <div className="text-white font-bold">{sale.product_name}</div>
-                                            <div className="text-[9px] text-zinc-600 italic">Gross WT: {sale.gross_weight}g</div>
-                                        </td>
-                                        <td className="py-4 px-2">
-                                            <div className="text-blue-500 font-black">{Number(sale.actual_product_quality).toFixed(2)}% PUR</div>
-                                            <div className="text-[9px] text-zinc-700">{Number(sale.density).toFixed(3)} ρ</div>
-                                        </td>
-                                        <td className="py-4 px-2 text-zinc-400">{Number(sale.quantity_grams).toFixed(3)}g</td>
-                                        <td className="py-4 px-2 text-right">
-                                            <div className="text-white font-black">${Number(sale.subtotal).toLocaleString()}</div>
-                                            <div className="text-green-900 text-[9px] font-black">{Number(sale.total_ugx).toLocaleString()} /=</div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+                )}
+            </main>
         </div>
     );
 };
 
 export default ManagerDashboard;
+

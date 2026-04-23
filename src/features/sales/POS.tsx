@@ -5,10 +5,24 @@ import { calculateDensity, calculatePurity } from '../../utils/calculations';
 import { saveSaleOffline } from '../../db/indexedDB';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
+import { 
+    LayoutDashboard, 
+    Calculator, 
+    History, 
+    LogOut,
+    CheckCircle2,
+    DollarSign,
+    Scale,
+    Search,
+    ChevronRight,
+    TrendingUp
+} from 'lucide-react';
 
 const POS = () => {
     const { token, user } = useSelector((state: RootState) => state.auth);
     const branchXFactor = (user as any)?.x_factor || 92.0;
+
+    const [activeTab, setActiveTab] = useState('billing');
 
     // Const Lists
     const [uoms, setUoms] = useState<any[]>([]);
@@ -124,136 +138,234 @@ const POS = () => {
         setSecondProcessWeight('');
     };
 
+    const SidebarItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
+        <button 
+            onClick={() => setActiveTab(id)}
+            className={`w-full flex items-center gap-3 px-6 py-3.5 transition-colors ${
+                activeTab === id 
+                ? 'bg-zinc-800 text-white' 
+                : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+            }`}
+        >
+            <Icon size={18} />
+            <span className="text-sm font-medium">{label}</span>
+        </button>
+    );
+
     return (
-        <div className="max-w-[1700px] mx-auto space-y-10 pb-24 p-6 font-mono selection:bg-white selection:text-black">
-            {/* Header Info */}
-            <div className="flex justify-between items-center bg-zinc-950 p-6 rounded-2xl border border-zinc-800 shadow-2xl">
-                <div>
-                    <h2 className="text-4xl font-black text-white italic tracking-tighter">POS TERMINAL</h2>
-                    <p className="text-zinc-500 text-xs mt-1 uppercase tracking-widest font-black">Node: {user?.username} • X-FACTOR: {branchXFactor}</p>
+        <div className="flex h-[88vh] bg-zinc-950 font-sans overflow-hidden rounded-xl border border-zinc-900 shadow-2xl">
+            {/* Sidebar */}
+            <aside className="w-64 border-r border-zinc-900 flex flex-col bg-zinc-950">
+                <div className="p-6 border-b border-zinc-900 mb-4">
+                    <h1 className="text-xl font-bold text-white tracking-tight">Staff Terminal</h1>
+                    <p className="text-xs text-zinc-600 mt-1 uppercase font-medium">{user?.username}</p>
                 </div>
-                <div className="flex gap-8">
-                     <div className="text-right">
-                        <span className="text-[10px] text-zinc-600 block uppercase font-black">Subtotal (USD)</span>
-                        <span className="text-white text-4xl font-black">${subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                     </div>
-                     <div className="text-right bg-white text-black px-6 py-2 rounded-xl">
-                        <span className="text-[10px] text-zinc-500 block uppercase font-black">Ugx Conversion</span>
-                        <span className="text-2xl font-black">{totalUgx.toLocaleString()} /=</span>
-                     </div>
-                </div>
-            </div>
 
-            {/* RFQ Container - LARGER FIELDS */}
-            <div className="card bg-zinc-950 border-zinc-800 p-8 space-y-8 shadow-2xl relative overflow-hidden backdrop-blur-md">
-                <h3 className="text-white font-black uppercase tracking-tighter border-b border-zinc-800 pb-4 text-xl">1. REQUEST FOR QUOTATION (RFQ)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-6">
-                    <div className="space-y-3">
-                        <label className="text-zinc-500 font-black uppercase text-xs">Vendor Identity</label>
-                        <input type="text" value={vendor} onChange={e => setVendor(e.target.value)} className="input-field py-4 bg-black text-lg h-14 border-zinc-700 focus:border-white transition-all" />
-                    </div>
-                    <div className="space-y-3">
-                        <label className="text-zinc-500 font-black uppercase text-xs">Purchase Method</label>
-                        <input type="text" value={purchaseMethod} onChange={e => setPurchaseMethod(e.target.value)} className="input-field py-4 bg-black text-lg h-14 border-zinc-700" />
-                    </div>
-                    <div className="space-y-3">
-                        <label className="text-zinc-500 font-black uppercase text-xs">Currency</label>
-                        <select value={marketPriceCurrency} onChange={e => setMarketPriceCurrency(e.target.value)} className="input-field py-4 bg-black text-lg h-14 border-zinc-700">
-                            {currencies.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-                        </select>
-                    </div>
-                    <div className="space-y-3 lg:col-span-1">
-                        <label className="text-blue-500 font-black uppercase text-xs">Market Price</label>
-                        <input type="number" value={marketPrice} onChange={e => setMarketPrice(Number(e.target.value))} className="input-field py-4 bg-black text-2xl h-14 border-blue-900 focus:border-blue-500 text-white font-black" />
-                    </div>
-                    <div className="space-y-3">
-                        <label className="text-zinc-500 font-black uppercase text-xs">Adjustment (+/-)</label>
-                        <input type="number" value={rfqDiscount} onChange={e => setRfqDiscount(Number(e.target.value))} className="input-field py-4 bg-black text-lg h-14 border-zinc-700" />
-                    </div>
-                    <div className="space-y-3">
-                        <label className="text-zinc-600 font-black uppercase text-xs">Net Price (Auto)</label>
-                        <div className="input-field py-4 bg-zinc-900 border-zinc-800 text-white font-black text-2xl h-14 flex items-center px-4">{netPrice.toFixed(2)}</div>
-                    </div>
-                    <div className="space-y-3">
-                        <label className="text-zinc-500 font-black uppercase text-xs">UOM</label>
-                        <select value={marketPriceUnit} onChange={e => setMarketPriceUnit(e.target.value)} className="input-field py-4 bg-black text-lg h-14 border-zinc-700 uppercase">
-                            {uoms.map(u => <option key={u.code} value={u.code}>{u.name}</option>)}
-                        </select>
-                    </div>
-                </div>
-            </div>
+                <nav className="flex-1">
+                    <SidebarItem id="billing" label="POS Billing" icon={Calculator} />
+                    <SidebarItem id="history" label="Sales History" icon={History} />
+                    <SidebarItem id="overview" label="Daily Summary" icon={LayoutDashboard} />
+                </nav>
 
-            {/* Constants Bar - LARGER FIELDS */}
-            <div className="bg-zinc-900/40 border-2 border-zinc-800 p-6 rounded-3xl grid grid-cols-2 lg:grid-cols-5 xl:grid-cols-11 gap-6 items-end shadow-2xl">
-                <div className="space-y-2"><label className="label-small text-zinc-500">Deadline</label><input type="date" value={orderDeadline} onChange={e => setOrderDeadline(e.target.value)} className="bg-transparent border-b-2 border-zinc-700 text-white w-full outline-none text-sm py-2" /></div>
-                <div className="space-y-2"><label className="label-small text-zinc-500">Arrival</label><input type="date" value={expectedArrival} onChange={e => setExpectedArrival(e.target.value)} className="bg-transparent border-b-2 border-zinc-700 text-white w-full outline-none text-sm py-2" /></div>
-                <div className="space-y-2">
-                    <label className="label-small text-zinc-500">Trans Currency</label>
-                    <select value={transactionCurrency} onChange={e => setTransactionCurrency(e.target.value)} className="bg-transparent border-b-2 border-zinc-700 text-white w-full outline-none text-sm py-2">
-                        {currencies.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-                    </select>
+                <div className="p-6 border-t border-zinc-900">
+                    <button 
+                        onClick={() => {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
+                            window.location.href = '/';
+                        }}
+                        className="w-full flex items-center gap-3 text-zinc-400 hover:text-red-400 transition-colors py-2 text-sm font-medium"
+                    >
+                        <LogOut size={16} />
+                        Logout
+                    </button>
                 </div>
-                <div className="space-y-2"><label className="label-small text-white">Rate</label><input type="number" value={currencyRate} onChange={e => setCurrencyRate(Number(e.target.value))} className="bg-transparent border-b-2 border-zinc-700 text-white w-full outline-none text-xl font-black py-1" /></div>
-                <div className="space-y-2"><label className="label-small text-zinc-500">Unit</label><div className="text-zinc-400 border-b-2 border-zinc-800 uppercase text-lg font-bold py-1">{transactionUnit}</div></div>
-                <div className="space-y-2"><label className="label-small text-zinc-500">Conv Factor</label><input type="number" value={conversionMarketUnit} onChange={e => setConversionMarketUnit(Number(e.target.value))} className="bg-transparent border-b-2 border-zinc-700 text-white w-full outline-none text-lg py-1" /></div>
-                <div className="space-y-2 col-span-1"><label className="label-small text-blue-500">Unit Price</label><div className="text-blue-400 font-black text-xl border-b-2 border-blue-900/30 py-1">${unitPrice.toFixed(2)}</div></div>
-                <div className="space-y-2"><label className="label-small text-zinc-600 font-black uppercase">Xfactor</label><div className="text-zinc-600 font-bold border-b-2 border-zinc-800 text-lg py-1">{branchXFactor}</div></div>
-                <div className="space-y-2 lg:col-span-1">
-                    <label className="label-small text-zinc-500">Payment Ref</label>
-                    <select value={paymentRef} onChange={e => setPaymentRef(e.target.value)} className="bg-transparent border-b-2 border-zinc-700 text-white w-full outline-none text-xs py-2">
-                        <option value="Paid Unfixed Amount">Paid Unfixed Amount</option>
-                        <option value="Fixed">Fixed</option>
-                    </select>
-                </div>
-                <div className="space-y-2"><label className="label-small text-white uppercase">Paid Amt</label><input type="number" value={paidAmount} onChange={e => setPaidAmount(Number(e.target.value))} className="bg-transparent border-b-2 border-zinc-700 text-white w-full outline-none text-xl font-black py-1" /></div>
-                <div className="space-y-2"><label className="label-small text-red-500">Balance</label><div className="text-red-500 font-black text-xl border-b-2 border-red-900/30 py-1">${balance.toFixed(2)}</div></div>
-            </div>
+            </aside>
 
-            {/* Material Input Sequence - VERY LARGE FIELDS */}
-            <div className="card bg-zinc-950 border-white/5 shadow-2xl p-0 overflow-hidden mt-10">
-                <div className="bg-white/5 px-8 py-4 text-xs uppercase font-black tracking-[0.3em] text-zinc-500 border-b border-white/5 shadow-inner">2. MATERIAL QUALITY & TRANSACTION SEQUENCE</div>
-                <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-11 gap-8 items-center bg-zinc-900/20">
-                    <div className="space-y-3 lg:col-span-1"><label className="label-small text-zinc-500 uppercase">Product</label><input type="text" value={productName} onChange={e => setProductName(e.target.value)} className="input-field py-4 bg-black text-lg h-14 border-zinc-800" /></div>
-                    <div className="space-y-3 lg:col-span-1"><label className="label-small text-zinc-500 uppercase">Decs</label><input type="text" value={description} onChange={e => setDescription(e.target.value)} className="input-field py-4 bg-black text-lg h-14 border-zinc-800" /></div>
-                    <div className="space-y-3"><label className="label-small text-zinc-500 uppercase">Gross (g)</label><input type="number" value={grossWeight} onChange={e => setGrossWeight(Number(e.target.value))} className="input-field py-4 bg-black text-xl h-14 border-zinc-800 font-mono" /></div>
-                    <div className="space-y-3"><label className="label-small text-white uppercase font-black">Actual (g)</label><input type="number" value={actualProcessWeight} onChange={e => setActualProcessWeight(Number(e.target.value))} className="input-field py-4 bg-zinc-950 border-white/20 text-2xl font-black h-14 shadow-[0_0_15px_rgba(255,255,255,0.05)]" /></div>
-                    <div className="space-y-3"><label className="label-small text-white uppercase font-black">Second (g)</label><input type="number" value={secondProcessWeight} onChange={e => setSecondProcessWeight(Number(e.target.value))} className="input-field py-4 bg-zinc-950 border-white/20 text-2xl font-black h-14 shadow-[0_0_15px_rgba(255,255,255,0.05)]" /></div>
-                    <div className="space-y-3"><label className="label-small text-zinc-600 uppercase">Loss</label><div className="text-zinc-500 font-mono text-xl font-bold">{processLoss.toFixed(3)}</div></div>
-                    <div className="space-y-3"><label className="label-small text-zinc-600 uppercase">Density</label><div className="text-zinc-500 font-mono text-xl font-bold">{density.toFixed(3)}</div></div>
-                    <div className="space-y-3"><label className="label-small text-blue-500 uppercase font-black">Purity (%)</label><div className="text-blue-400 font-black text-3xl">{computedPurity.toFixed(2)}%</div></div>
-                    <div className="space-y-3"><label className="label-small text-zinc-500 uppercase">USD Net</label><div className="text-white font-black text-2xl">${subtotal.toLocaleString(undefined, {maximumFractionDigits: 0})}</div></div>
-                    <div className="space-y-3"><label className="label-small text-green-600 uppercase font-black">UGX TOTAL</label><div className="text-green-500 font-black text-lg whitespace-nowrap">{totalUgx.toLocaleString()}</div></div>
-                    <div className="pt-6">
-                        <button onClick={handleSave} className="w-full bg-white text-black hover:bg-zinc-200 font-black py-4 rounded-2xl text-xs uppercase tracking-[0.4em] transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-                            POST_BILL
-                        </button>
+            {/* Main Content */}
+            <main className="flex-1 overflow-y-auto p-8 bg-zinc-950">
+                {/* Billing Tab */}
+                {activeTab === 'billing' && (
+                    <div className="space-y-8 animate-in fade-in duration-300 max-w-6xl">
+                        {/* Transaction Header */}
+                        <div className="flex justify-between items-end border-b border-zinc-900 pb-6">
+                            <div>
+                                <h2 className="text-2xl font-semibold text-white">Create New Bill</h2>
+                                <p className="text-sm text-zinc-500 mt-1">Configure transaction rfq and product specs</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs text-zinc-600 uppercase font-bold tracking-widest">Total Settlement</p>
+                                <p className="text-3xl font-bold text-white">${subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                                <p className="text-emerald-500 font-medium">{totalUgx.toLocaleString()} UGX</p>
+                            </div>
+                        </div>
+
+                        {/* Section 1: RFQ & Metadata */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="card space-y-6">
+                                <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">1. Procurement Context</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-zinc-500">Vendor Name</label>
+                                        <input type="text" value={vendor} onChange={e => setVendor(e.target.value)} className="input-field" placeholder="Client identity" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-zinc-500">Purchase Method</label>
+                                        <input type="text" value={purchaseMethod} onChange={e => setPurchaseMethod(e.target.value)} className="input-field" placeholder="e.g. Spot" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-zinc-500">Market Price (USD)</label>
+                                        <input type="number" value={marketPrice} onChange={e => setMarketPrice(Number(e.target.value))} className="input-field font-semibold text-white" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-zinc-500">Adjustment +/-</label>
+                                        <input type="number" value={rfqDiscount} onChange={e => setRfqDiscount(Number(e.target.value))} className="input-field" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-zinc-500">Currency Rate</label>
+                                        <input type="number" value={currencyRate} onChange={e => setCurrencyRate(Number(e.target.value))} className="input-field" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-zinc-500">Paid Amount (USD)</label>
+                                        <input type="number" value={paidAmount} onChange={e => setPaidAmount(Number(e.target.value))} className="input-field border-blue-900/50" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="card space-y-6">
+                                <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">2. Product Specification</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1 col-span-2">
+                                        <label className="text-xs text-zinc-500">Product Title</label>
+                                        <input type="text" value={productName} onChange={e => setProductName(e.target.value)} className="input-field" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-zinc-500 font-medium text-white">Actual Weight (g)</label>
+                                        <input type="number" value={actualProcessWeight} onChange={e => setActualProcessWeight(Number(e.target.value))} className="input-field border-zinc-700 bg-zinc-950 text-emerald-400 text-lg font-bold" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-zinc-500 font-medium text-white">Second Weight (g)</label>
+                                        <input type="number" value={secondProcessWeight} onChange={e => setSecondProcessWeight(Number(e.target.value))} className="input-field border-zinc-700 bg-zinc-950 text-blue-400 text-lg font-bold" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-zinc-500">Gross Weight (g)</label>
+                                        <input type="number" value={grossWeight} onChange={e => setGrossWeight(Number(e.target.value))} className="input-field" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-zinc-500">Loss (g)</label>
+                                        <div className="input-field bg-zinc-900/50 flex items-center text-zinc-500">{processLoss.toFixed(3)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Summary Bar */}
+                        <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-xl flex flex-wrap justify-between items-center gap-8">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-blue-500/10 rounded-full text-blue-500">
+                                    <Scale size={24} />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-zinc-500 uppercase font-bold">Analysis Density</p>
+                                    <p className="text-xl font-semibold text-white">{density.toFixed(3)} ρ</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-emerald-500/10 rounded-full text-emerald-500">
+                                    <CheckCircle2 size={24} />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-zinc-500 uppercase font-bold">Calculated Purity</p>
+                                    <p className="text-xl font-semibold text-white">{computedPurity.toFixed(2)}%</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-purple-500/10 rounded-full text-purple-500">
+                                    <DollarSign size={24} />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-zinc-500 uppercase font-bold">Adjusted Unit Price</p>
+                                    <p className="text-xl font-semibold text-white">${unitPrice.toFixed(2)} /g</p>
+                                </div>
+                            </div>
+                            <button onClick={handleSave} className="btn-primary px-12 py-4 flex items-center gap-3">
+                                Generate Bill <ChevronRight size={18} />
+                            </button>
+                        </div>
                     </div>
-                </div>
-            </div>
+                )}
 
-            {/* Audit History */}
-            <div className="mt-12 overflow-x-auto shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-zinc-800 rounded-3xl overflow-hidden bg-black/40">
-                <table className="w-full text-left">
-                    <thead>
-                        <tr className="bg-zinc-900 border-b border-zinc-800 text-zinc-500 uppercase text-[10px] tracking-widest">
-                            <th className="p-6">Execution Timestamp</th><th className="p-6">Vendor Origin</th><th className="p-6">Product Details</th><th className="p-6">Analysis Result</th><th className="p-6 text-right">Settlement (USD)</th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-sm">
-                        {salesLedger.map(sale => (
-                            <tr key={sale.id} className="border-b border-zinc-900 hover:bg-zinc-900/50 transition-all group">
-                                <td className="p-6 text-zinc-500 font-mono text-xs">{new Date(sale.created_at).toLocaleString()}</td>
-                                <td className="p-6"><div className="text-white font-black uppercase text-base">{sale.vendor || 'UNKNOWN'}</div><div className="text-[10px] text-zinc-600 italic uppercase tracking-wider">{sale.purchase_method}</div></td>
-                                <td className="p-6 text-zinc-400 font-medium">{sale.product_name} • {sale.actual_process_weight}g / ${sale.market_price} UNIT</td>
-                                <td className="p-6"><div className="text-blue-500 font-black text-lg">{Number(sale.actual_product_quality).toFixed(2)}% PURITY</div><div className="text-[10px] text-zinc-700 italic font-black uppercase">BRANCH_FACTOR: {sale.x_factor}</div></td>
-                                <td className="p-6 text-right"><div className="text-white font-black text-xl">${Number(sale.subtotal).toLocaleString(undefined, {minimumFractionDigits: 2})}</div><div className="text-green-900 text-[10px] font-black">{Number(sale.total_ugx).toLocaleString()} /=</div></td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                {/* History Tab */}
+                {activeTab === 'history' && (
+                    <div className="animate-in fade-in duration-300">
+                        <div className="mb-6 flex justify-between items-center">
+                            <h2 className="text-xl font-semibold text-white">Your Recent Transactions</h2>
+                        </div>
+                        <div className="card p-0 overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="border-b border-zinc-800 text-zinc-500 text-xs font-medium bg-zinc-900/50">
+                                        <th className="p-4">Time</th>
+                                        <th className="p-4">Client</th>
+                                        <th className="p-4">Product Specs</th>
+                                        <th className="p-4 text-right">Settlement</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-sm">
+                                    {salesLedger.map(sale => (
+                                        <tr key={sale.id} className="border-b border-zinc-900 hover:bg-zinc-900/40 transition-colors">
+                                            <td className="p-4 text-zinc-500">{new Date(sale.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                                            <td className="p-4">
+                                                <p className="text-white font-medium">{sale.vendor || 'Private Client'}</p>
+                                                <p className="text-xs text-zinc-600">{sale.purchase_method}</p>
+                                            </td>
+                                            <td className="p-4">
+                                                <p className="text-zinc-300">{sale.product_name}</p>
+                                                <p className="text-xs text-zinc-600">{sale.actual_process_weight}g @ {Number(sale.actual_product_quality).toFixed(2)}%</p>
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <p className="text-white font-semibold">${Number(sale.subtotal).toLocaleString()}</p>
+                                                <p className="text-xs text-zinc-600">{Number(sale.total_ugx).toLocaleString()} UGX</p>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Overview Tab */}
+                {activeTab === 'overview' && (
+                    <div className="space-y-8 animate-in fade-in duration-300">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="card p-6 border-l-4 border-emerald-500">
+                                <TrendingUp className="text-emerald-500 mb-4" size={24} />
+                                <p className="text-3xl font-bold text-white">${salesLedger.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}</p>
+                                <p className="text-sm text-zinc-500 mt-1">Today's Revenue (USD)</p>
+                            </div>
+                            <div className="card p-6 border-l-4 border-blue-500">
+                                <Calculator className="text-blue-500 mb-4" size={24} />
+                                <p className="text-3xl font-bold text-white">{salesLedger.length}</p>
+                                <p className="text-sm text-zinc-500 mt-1">Transaction Count</p>
+                            </div>
+                            <div className="card p-6 border-l-4 border-purple-500">
+                                <Scale className="text-purple-500 mb-4" size={24} />
+                                <p className="text-3xl font-bold text-white">{salesLedger.reduce((acc, s) => acc + Number(s.actual_process_weight), 0).toFixed(2)}g</p>
+                                <p className="text-sm text-zinc-500 mt-1">Total Gold Weight</p>
+                            </div>
+                        </div>
+                        
+                        <div className="card">
+                            <h3 className="text-lg font-medium text-white mb-6">Performance Insights</h3>
+                            <p className="text-zinc-500 text-sm">Your terminal current productivity is at target. Ensure all pending offline sales are synced once connectivity is restored.</p>
+                        </div>
+                    </div>
+                )}
+            </main>
         </div>
     );
 };
 
 export default POS;
+
