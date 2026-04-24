@@ -142,8 +142,8 @@ const ManagerDashboard = () => {
             onClick={() => setActiveTab(id)}
             className={`w-full flex items-center gap-3 px-6 py-3.5 transition-colors ${
                 activeTab === id 
-                ? 'bg-zinc-800 text-white' 
-                : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                ? 'bg-[var(--accent)] text-[var(--accent-foreground)]' 
+                : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-main)]'
             }`}
         >
             <Icon size={18} />
@@ -152,12 +152,12 @@ const ManagerDashboard = () => {
     );
 
     return (
-        <div className="flex h-[88vh] bg-zinc-950 font-sans overflow-hidden rounded-xl border border-zinc-900 shadow-2xl">
+        <div className="flex h-[88vh] bg-[var(--bg-main)] font-sans overflow-hidden rounded-xl border border-[var(--border-main)] shadow-2xl">
             {/* Sidebar */}
-            <aside className="w-64 border-r border-zinc-900 flex flex-col bg-zinc-950">
-                <div className="p-6 border-b border-zinc-900 mb-4">
-                    <h1 className="text-xl font-bold text-white tracking-tight">Manager Node</h1>
-                    <p className="text-xs text-zinc-600 mt-1 uppercase font-medium">{user?.branch_name || 'Assigned Branch'}</p>
+            <aside className="w-64 border-r border-[var(--border-main)] flex flex-col bg-[var(--bg-sidebar)]">
+                <div className="p-6 border-b border-[var(--border-main)] mb-4">
+                    <h1 className="text-xl font-bold text-[var(--text-main)] tracking-tight">Manager Node</h1>
+                    <p className="text-xs text-[var(--text-muted)] mt-1 uppercase font-medium">{user?.branch_name || 'Assigned Branch'}</p>
                 </div>
 
                 <nav className="flex-1">
@@ -167,10 +167,10 @@ const ManagerDashboard = () => {
                     <SidebarItem id="terminals" label="Terminal Management" icon={Monitor} />
                 </nav>
 
-                <div className="p-6 border-t border-zinc-900">
+                <div className="p-6 border-t border-[var(--border-main)]">
                     <button 
                         onClick={() => navigate('/login')}
-                        className="w-full flex items-center gap-3 text-zinc-400 hover:text-red-400 transition-colors py-2 text-sm font-medium"
+                        className="w-full flex items-center gap-3 text-[var(--text-muted)] hover:text-red-400 transition-colors py-2 text-sm font-medium"
                     >
                         <LogOut size={16} />
                         Logout
@@ -183,10 +183,10 @@ const ManagerDashboard = () => {
                 {/* Header */}
                 <div className="mb-10 flex justify-between items-center">
                     <div>
-                        <h2 className="text-2xl font-semibold text-white capitalize">
+                        <h2 className="text-2xl font-semibold text-[var(--text-main)] capitalize">
                             {activeTab}
                         </h2>
-                        <p className="text-sm text-zinc-500 mt-1">Operational Control Center</p>
+                        <p className="text-sm text-[var(--text-muted)] mt-1">Operational Control Center</p>
                     </div>
                 </div>
 
@@ -196,29 +196,29 @@ const ManagerDashboard = () => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="card p-6">
                                 <TrendingUp className="text-emerald-400 mb-4" size={24} />
-                                <p className="text-2xl font-semibold text-white">${sales.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}</p>
-                                <p className="text-sm text-zinc-500 mt-1">Branch Revenue</p>
+                                <p className="text-2xl font-semibold text-[var(--text-main)]">${sales.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}</p>
+                                <p className="text-sm text-[var(--text-muted)] mt-1">Branch Revenue</p>
                             </div>
                             <div className="card p-6">
                                 <ReceiptText className="text-blue-400 mb-4" size={24} />
-                                <p className="text-2xl font-semibold text-white">{sales.length}</p>
-                                <p className="text-sm text-zinc-500 mt-1">Daily Transactions</p>
+                                <p className="text-2xl font-semibold text-[var(--text-main)]">{sales.length}</p>
+                                <p className="text-sm text-[var(--text-muted)] mt-1">Daily Transactions</p>
                             </div>
                             <div className="card p-6">
                                 <Users className="text-purple-400 mb-4" size={24} />
-                                <p className="text-2xl font-semibold text-white">{staffList.filter(s => s.role === 'STAFF').length}</p>
-                                <p className="text-sm text-zinc-500 mt-1">Active Staff</p>
+                                <p className="text-2xl font-semibold text-[var(--text-main)]">{staffList.filter(s => s.role === 'STAFF').length}</p>
+                                <p className="text-sm text-[var(--text-muted)] mt-1">Active Staff</p>
                             </div>
                         </div>
 
                         <div className="card">
-                            <h3 className="text-lg font-medium text-white mb-6">Recent Activity</h3>
+                            <h3 className="text-lg font-medium text-[var(--text-main)] mb-6">Recent Activity</h3>
                             <div className="space-y-4">
                                 {sales.slice(0, 5).map(s => (
-                                    <div key={s.id} className="flex justify-between items-center bg-zinc-900/50 p-4 rounded border border-zinc-800">
+                                    <div key={s.id} className="flex justify-between items-center bg-[var(--bg-main)] p-4 rounded border border-[var(--border-main)]">
                                         <div>
-                                            <p className="text-sm font-medium text-white">{s.product_name}</p>
-                                            <p className="text-xs text-zinc-500">{new Date(s.created_at).toLocaleTimeString()}</p>
+                                            <p className="text-sm font-medium text-[var(--text-main)]">{s.product_name}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">{new Date(s.created_at).toLocaleTimeString()}</p>
                                         </div>
                                         <p className="text-sm font-bold text-emerald-400">+${Number(s.subtotal).toLocaleString()}</p>
                                     </div>
@@ -234,7 +234,7 @@ const ManagerDashboard = () => {
                         <div className="card p-0 overflow-hidden">
                             <table className="w-full text-left">
                                 <thead>
-                                    <tr className="border-b border-zinc-800 text-zinc-500 text-xs font-medium bg-zinc-900/50">
+                                    <tr className="border-b border-[var(--border-main)] text-[var(--text-muted)] text-xs font-medium bg-[var(--bg-sidebar)]">
                                         <th className="p-4">Time</th>
                                         <th className="p-4">Terminal</th>
                                         <th className="p-4">Material Details</th>
@@ -244,17 +244,17 @@ const ManagerDashboard = () => {
                                 </thead>
                                 <tbody className="text-sm">
                                     {sales.map(sale => (
-                                        <tr key={sale.id} className="border-b border-zinc-900 hover:bg-zinc-900/40 transition-colors">
-                                            <td className="p-4 text-zinc-400">{new Date(sale.created_at).toLocaleTimeString()}</td>
-                                            <td className="p-4 text-white font-medium">{sale.staff_name}</td>
+                                        <tr key={sale.id} className="border-b border-[var(--border-main)] hover:bg-[var(--bg-sidebar)] transition-colors">
+                                            <td className="p-4 text-[var(--text-muted)]">{new Date(sale.created_at).toLocaleTimeString()}</td>
+                                            <td className="p-4 text-[var(--text-main)] font-medium">{sale.staff_name}</td>
                                             <td className="p-4">
-                                                <p className="text-white">{sale.product_name}</p>
-                                                <p className="text-xs text-zinc-600">{sale.quantity_grams}g</p>
+                                                <p className="text-[var(--text-main)]">{sale.product_name}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">{sale.quantity_grams}g</p>
                                             </td>
-                                            <td className="p-4 text-zinc-400">{sale.actual_product_quality}% Purity</td>
+                                            <td className="p-4 text-[var(--text-muted)]">{sale.actual_product_quality}% Purity</td>
                                             <td className="p-4 text-right">
-                                                <p className="text-white font-semibold">${Number(sale.subtotal).toLocaleString()}</p>
-                                                <p className="text-xs text-zinc-600">{Number(sale.total_ugx).toLocaleString()} UGX</p>
+                                                <p className="text-[var(--text-main)] font-semibold">${Number(sale.subtotal).toLocaleString()}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">{Number(sale.total_ugx).toLocaleString()} UGX</p>
                                             </td>
                                         </tr>
                                     ))}
@@ -354,43 +354,21 @@ const ManagerDashboard = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
                         <div className="lg:col-span-2 space-y-4">
                             {staffList.filter(s => s.role === 'STAFF').map(s => (
-                                <div key={s.id} className="card flex justify-between items-center p-5 group hover:border-zinc-700 transition-all">
-                                     <div className="flex items-center gap-4">
-                                         <div className={`p-3 rounded-lg ${s.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-500'}`}>
-                                             <Monitor size={20} />
-                                         </div>
-                                         <div>
-                                             <p className="text-white font-semibold flex items-center gap-2">
-                                                 {s.username}
-                                                 {s.is_active ? 
-                                                     <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider">Online</span> : 
-                                                     <span className="text-[10px] bg-red-500/20 text-red-500 px-1.5 py-0.5 rounded uppercase tracking-wider">Disabled</span>
-                                                 }
-                                             </p>
-                                             <p className="text-xs text-zinc-500">{s.email || 'No email assigned'}</p>
-                                         </div>
-                                     </div>
-                                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                         <button 
-                                             onClick={() => toggleUserStatus(s.id)}
-                                             title={s.is_active ? "Assess Permission (Revoke)" : "Grant Access"}
-                                             className={`p-2 rounded-md transition-colors ${s.is_active ? 'hover:bg-amber-500/20 text-emerald-400 hover:text-amber-400' : 'hover:bg-emerald-500/20 text-red-500 hover:text-emerald-400'}`}
-                                         >
-                                             {s.is_active ? <ShieldCheck size={18} /> : <ShieldAlert size={18} />}
-                                         </button>
-                                         <button 
-                                             onClick={() => deleteUser(s.id)}
-                                             className="p-2 hover:bg-red-500/20 text-zinc-600 hover:text-red-500 rounded-md transition-colors"
-                                         >
-                                             <Trash2 size={18} />
-                                         </button>
-                                     </div>
-                                 </div>
+                                <div key={s.id} className="card flex justify-between items-center">
+                                    <div className="flex items-center gap-4">
+                                        <Monitor className="text-[var(--text-muted)]" size={24} />
+                                        <div>
+                                            <p className="text-[var(--text-main)] font-semibold">{s.username}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">Active Node</p>
+                                        </div>
+                                    </div>
+                                    <ChevronRight className="text-[var(--text-muted)] opacity-50" size={18} />
+                                </div>
                             ))}
                         </div>
 
                         <div className="card h-fit">
-                            <h3 className="text-white font-medium mb-6 flex items-center gap-2"><Plus size={18} /> Authorize Terminal</h3>
+                            <h3 className="text-[var(--text-main)] font-medium mb-6 flex items-center gap-2"><Plus size={18} /> Authorize Terminal</h3>
                             <div className="space-y-4">
                                 <input type="text" placeholder="Username" value={newUsername} onChange={e => setNewUsername(e.target.value)} className="input-field" />
                                 <input type="email" placeholder="Email (Optional)" value={newEmail} onChange={e => setNewEmail(e.target.value)} className="input-field" />

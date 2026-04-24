@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../app/store';
-import { calculateDensity, calculatePurity } from '../../utils/calculations';
+import { calculateDensity, calculatePurity, calculateTolaRate, calculateSubtotal } from '../../utils/calculations';
 import { saveSaleOffline } from '../../db/indexedDB';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
@@ -52,6 +52,10 @@ const POS = () => {
     const [grossWeight, setGrossWeight] = useState<number | ''>('');
     const [actualProcessWeight, setActualProcessWeight] = useState<number | ''>('');
     const [secondProcessWeight, setSecondProcessWeight] = useState<number | ''>('');
+    const [manualFirstProcessWeight, setManualFirstProcessWeight] = useState<number | ''>('');
+    const [manualPurity, setManualPurity] = useState<number | ''>('');
+    const [showReceipt, setShowReceipt] = useState(false);
+    const [lastSavedSale, setLastSavedSale] = useState<any>(null);
 
     const [salesLedger, setSalesLedger] = useState<any[]>([]);
 
@@ -86,14 +90,22 @@ const POS = () => {
     const processLoss = (grossWeight !== '' && actualProcessWeight !== '') ? Number(grossWeight) - Number(actualProcessWeight) : 0;
     const density = (actualProcessWeight !== '' && secondProcessWeight !== '') ? calculateDensity(Number(actualProcessWeight), Number(secondProcessWeight)) : 0;
     const computedPurity = calculatePurity(density);
-    const unitPrice = netPrice * (computedPurity / branchXFactor);
-    const quantity = actualProcessWeight !== '' ? Number(actualProcessWeight) : 0;
-    const subtotal = (unitPrice * (quantity / 11.664)); 
+    const finalPurity = manualPurity !== '' && Number(manualPurity) > 0 ? Number(manualPurity) : computedPurity;
+    
+    const weightToUse = manualFirstProcessWeight !== '' && Number(manualFirstProcessWeight) > 0 
+        ? Number(manualFirstProcessWeight) 
+        : (actualProcessWeight !== '' ? Number(actualProcessWeight) : 0);
+    
+    const qtyTolas = weightToUse / 11.664;
+    const tolaRate = calculateTolaRate(Number(marketPrice || 0), Number(rfqDiscount || 0));
+    const subtotal = calculateSubtotal(tolaRate, finalPurity, qtyTolas);
+    const unitPrice = tolaRate * 3 * (finalPurity / 100); // Price per Tola
+    
     const balance = subtotal - (paidAmount !== '' ? Number(paidAmount) : 0);
     const totalUgx = Math.round((subtotal * Number(currencyRate || 1)) / 1000) * 1000;
 
     const handleSave = async () => {
-        if (actualProcessWeight === '') return alert('Weight Required');
+        if (weightToUse === 0) return alert('Weight Required');
         const sale = {
             id: uuidv4(),
             vendor,
@@ -118,24 +130,33 @@ const POS = () => {
             gross_weight: Number(grossWeight),
             actual_process_weight: Number(actualProcessWeight),
             second_process_weight: Number(secondProcessWeight),
+            manual_first_process: Number(manualFirstProcessWeight),
+            manual_purity: Number(manualPurity),
             process_loss: processLoss,
             density,
-            actual_product_quality: computedPurity,
+            actual_product_quality: finalPurity,
             unit_price: unitPrice,
             subtotal: subtotal,
             total_ugx: totalUgx,
+            qty_tolas: qtyTolas,
+            tola_rate: tolaRate,
+            created_at: new Date().toISOString()
         };
         await saveSaleOffline(sale);
+        setLastSavedSale(sale);
+        setShowReceipt(true);
+
         if (navigator.onLine) {
             window.dispatchEvent(new Event('online'));
             setTimeout(fetchMySales, 1000);
         }
-        alert('Bill generated and saved successfully.');
         
-        // Reset Weights for next bill
+        // Reset for next bill
         setGrossWeight('');
         setActualProcessWeight('');
         setSecondProcessWeight('');
+        setManualFirstProcessWeight('');
+        setManualPurity('');
     };
 
     const SidebarItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
@@ -143,8 +164,8 @@ const POS = () => {
             onClick={() => setActiveTab(id)}
             className={`w-full flex items-center gap-3 px-6 py-3.5 transition-colors ${
                 activeTab === id 
-                ? 'bg-zinc-800 text-white' 
-                : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                ? 'bg-[var(--accent)] text-[var(--accent-foreground)]' 
+                : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-main)]'
             }`}
         >
             <Icon size={18} />
@@ -153,12 +174,12 @@ const POS = () => {
     );
 
     return (
-        <div className="flex h-[88vh] bg-zinc-950 font-sans overflow-hidden rounded-xl border border-zinc-900 shadow-2xl">
+        <div className="flex h-[88vh] bg-[var(--bg-main)] font-sans overflow-hidden rounded-xl border border-[var(--border-main)] shadow-2xl">
             {/* Sidebar */}
-            <aside className="w-64 border-r border-zinc-900 flex flex-col bg-zinc-950">
-                <div className="p-6 border-b border-zinc-900 mb-4">
-                    <h1 className="text-xl font-bold text-white tracking-tight">Staff Terminal</h1>
-                    <p className="text-xs text-zinc-600 mt-1 uppercase font-medium">{user?.username}</p>
+            <aside className="w-64 border-r border-[var(--border-main)] flex flex-col bg-[var(--bg-sidebar)]">
+                <div className="p-6 border-b border-[var(--border-main)] mb-4">
+                    <h1 className="text-xl font-bold text-[var(--text-main)] tracking-tight">Staff Terminal</h1>
+                    <p className="text-xs text-[var(--text-muted)] mt-1 uppercase font-medium">{user?.username}</p>
                 </div>
 
                 <nav className="flex-1">
@@ -183,19 +204,19 @@ const POS = () => {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto p-8 bg-zinc-950">
+            <main className="flex-1 overflow-y-auto p-8 bg-[var(--bg-main)]">
                 {/* Billing Tab */}
                 {activeTab === 'billing' && (
                     <div className="space-y-8 animate-in fade-in duration-300 max-w-6xl">
                         {/* Transaction Header */}
-                        <div className="flex justify-between items-end border-b border-zinc-900 pb-6">
+                        <div className="flex justify-between items-end border-b border-[var(--border-main)] pb-6">
                             <div>
-                                <h2 className="text-2xl font-semibold text-white">Create New Bill</h2>
-                                <p className="text-sm text-zinc-500 mt-1">Configure transaction rfq and product specs</p>
+                                <h2 className="text-2xl font-semibold text-[var(--text-main)]">Create New Bill</h2>
+                                <p className="text-sm text-[var(--text-muted)] mt-1">Configure transaction rfq and product specs</p>
                             </div>
                             <div className="text-right">
-                                <p className="text-xs text-zinc-600 uppercase font-bold tracking-widest">Total Settlement</p>
-                                <p className="text-3xl font-bold text-white">${subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                                <p className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-widest">Total Settlement</p>
+                                <p className="text-3xl font-bold text-[var(--text-main)]">${subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
                                 <p className="text-emerald-500 font-medium">{totalUgx.toLocaleString()} UGX</p>
                             </div>
                         </div>
@@ -203,7 +224,7 @@ const POS = () => {
                         {/* Section 1: RFQ & Metadata */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="card space-y-6">
-                                <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">1. Procurement Context</h3>
+                                <h3 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider">1. Procurement Context</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
                                         <label className="text-xs text-zinc-500">Vendor Name</label>
@@ -214,8 +235,8 @@ const POS = () => {
                                         <input type="text" value={purchaseMethod} onChange={e => setPurchaseMethod(e.target.value)} className="input-field" placeholder="e.g. Spot" />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-xs text-zinc-500">Market Price (USD)</label>
-                                        <input type="number" value={marketPrice} onChange={e => setMarketPrice(Number(e.target.value))} className="input-field font-semibold text-white" />
+                                        <label className="text-xs text-[var(--text-muted)]">Market Price (USD)</label>
+                                        <input type="number" value={marketPrice} onChange={e => setMarketPrice(Number(e.target.value))} className="input-field font-semibold text-[var(--text-main)]" />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-xs text-zinc-500">Adjustment +/-</label>
@@ -233,19 +254,27 @@ const POS = () => {
                             </div>
 
                             <div className="card space-y-6">
-                                <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">2. Product Specification</h3>
+                                <h3 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider">2. Product Specification</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1 col-span-2">
                                         <label className="text-xs text-zinc-500">Product Title</label>
                                         <input type="text" value={productName} onChange={e => setProductName(e.target.value)} className="input-field" />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-xs text-zinc-500 font-medium text-white">Actual Weight (g)</label>
-                                        <input type="number" value={actualProcessWeight} onChange={e => setActualProcessWeight(Number(e.target.value))} className="input-field border-zinc-700 bg-zinc-950 text-emerald-400 text-lg font-bold" />
+                                        <label className="text-xs text-[var(--text-muted)] font-medium text-[var(--text-main)]">Actual Weight (g)</label>
+                                        <input type="number" value={actualProcessWeight} onChange={e => setActualProcessWeight(Number(e.target.value))} className="input-field border-[var(--border-main)] bg-[var(--bg-main)] text-emerald-400 text-lg font-bold" />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-xs text-zinc-500 font-medium text-white">Second Weight (g)</label>
-                                        <input type="number" value={secondProcessWeight} onChange={e => setSecondProcessWeight(Number(e.target.value))} className="input-field border-zinc-700 bg-zinc-950 text-blue-400 text-lg font-bold" />
+                                        <label className="text-xs text-[var(--text-muted)] font-medium text-[var(--text-main)]">Second Weight (g)</label>
+                                        <input type="number" value={secondProcessWeight} onChange={e => setSecondProcessWeight(Number(e.target.value))} className="input-field border-[var(--border-main)] bg-[var(--bg-main)] text-blue-400 text-lg font-bold" />
+                                    </div>
+                                     <div className="space-y-1">
+                                        <label className="text-xs text-zinc-500 font-medium">Manual First Weight (g)</label>
+                                        <input type="number" value={manualFirstProcessWeight} onChange={e => setManualFirstProcessWeight(Number(e.target.value))} className="input-field border-orange-500/30" placeholder="Optional override" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-zinc-500 font-medium">Manual Purity (%)</label>
+                                        <input type="number" value={manualPurity} onChange={e => setManualPurity(Number(e.target.value))} className="input-field border-orange-500/30" placeholder="Optional override" />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-xs text-zinc-500">Gross Weight (g)</label>
@@ -260,14 +289,14 @@ const POS = () => {
                         </div>
 
                         {/* Summary Bar */}
-                        <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-xl flex flex-wrap justify-between items-center gap-8">
+                        <div className="bg-[var(--bg-card)] border border-[var(--border-main)] p-8 rounded-xl flex flex-wrap justify-between items-center gap-8">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-blue-500/10 rounded-full text-blue-500">
                                     <Scale size={24} />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-zinc-500 uppercase font-bold">Analysis Density</p>
-                                    <p className="text-xl font-semibold text-white">{density.toFixed(3)} ρ</p>
+                                    <p className="text-xs text-[var(--text-muted)] uppercase font-bold">Qty (Tolas)</p>
+                                    <p className="text-xl font-semibold text-[var(--text-main)]">{qtyTolas.toFixed(3)} t</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">
@@ -275,8 +304,8 @@ const POS = () => {
                                     <CheckCircle2 size={24} />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-zinc-500 uppercase font-bold">Calculated Purity</p>
-                                    <p className="text-xl font-semibold text-white">{computedPurity.toFixed(2)}%</p>
+                                    <p className="text-xs text-[var(--text-muted)] uppercase font-bold">Final Purity</p>
+                                    <p className="text-xl font-semibold text-[var(--text-main)]">{finalPurity.toFixed(2)}%</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">
@@ -284,8 +313,8 @@ const POS = () => {
                                     <DollarSign size={24} />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-zinc-500 uppercase font-bold">Adjusted Unit Price</p>
-                                    <p className="text-xl font-semibold text-white">${unitPrice.toFixed(2)} /g</p>
+                                    <p className="text-xs text-[var(--text-muted)] uppercase font-bold">Tola Rate</p>
+                                    <p className="text-xl font-semibold text-[var(--text-main)]">${tolaRate.toFixed(2)}</p>
                                 </div>
                             </div>
                             <button onClick={handleSave} className="btn-primary px-12 py-4 flex items-center gap-3">
@@ -299,12 +328,12 @@ const POS = () => {
                 {activeTab === 'history' && (
                     <div className="animate-in fade-in duration-300">
                         <div className="mb-6 flex justify-between items-center">
-                            <h2 className="text-xl font-semibold text-white">Your Recent Transactions</h2>
+                            <h2 className="text-xl font-semibold text-[var(--text-main)]">Your Recent Transactions</h2>
                         </div>
                         <div className="card p-0 overflow-hidden">
                             <table className="w-full text-left">
                                 <thead>
-                                    <tr className="border-b border-zinc-800 text-zinc-500 text-xs font-medium bg-zinc-900/50">
+                                    <tr className="border-b border-[var(--border-main)] text-[var(--text-muted)] text-xs font-medium bg-[var(--bg-sidebar)]">
                                         <th className="p-4">Time</th>
                                         <th className="p-4">Client</th>
                                         <th className="p-4">Product Specs</th>
@@ -314,18 +343,58 @@ const POS = () => {
                                 <tbody className="text-sm">
                                     {salesLedger.map(sale => (
                                         <tr key={sale.id} className="border-b border-zinc-900 hover:bg-zinc-900/40 transition-colors">
-                                            <td className="p-4 text-zinc-500">{new Date(sale.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                                            <td className="p-4 text-[var(--text-muted)]">{new Date(sale.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
                                             <td className="p-4">
-                                                <p className="text-white font-medium">{sale.vendor || 'Private Client'}</p>
-                                                <p className="text-xs text-zinc-600">{sale.purchase_method}</p>
+                                                <p className="text-[var(--text-main)] font-medium">{sale.vendor || 'Private Client'}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">{sale.purchase_method}</p>
                                             </td>
                                             <td className="p-4">
-                                                <p className="text-zinc-300">{sale.product_name}</p>
-                                                <p className="text-xs text-zinc-600">{sale.actual_process_weight}g @ {Number(sale.actual_product_quality).toFixed(2)}%</p>
+                                                <p className="text-[var(--text-main)] opacity-80">{sale.product_name}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">{sale.actual_process_weight}g @ {Number(sale.actual_product_quality).toFixed(2)}%</p>
                                             </td>
                                             <td className="p-4 text-right">
-                                                <p className="text-white font-semibold">${Number(sale.subtotal).toLocaleString()}</p>
-                                                <p className="text-xs text-zinc-600">{Number(sale.total_ugx).toLocaleString()} UGX</p>
+                                                <p className="text-[var(--text-main)] font-semibold">${Number(sale.subtotal).toLocaleString()}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">{Number(sale.total_ugx).toLocaleString()} UGX</p>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* History Tab */}
+                {activeTab === 'history' && (
+                    <div className="animate-in fade-in duration-300">
+                        <div className="mb-6 flex justify-between items-center">
+                            <h2 className="text-xl font-semibold text-[var(--text-main)]">Your Recent Transactions</h2>
+                        </div>
+                        <div className="card p-0 overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="border-b border-[var(--border-main)] text-[var(--text-muted)] text-xs font-medium bg-[var(--bg-sidebar)]">
+                                        <th className="p-4">Time</th>
+                                        <th className="p-4">Client</th>
+                                        <th className="p-4">Product Specs</th>
+                                        <th className="p-4 text-right">Settlement</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-sm">
+                                    {salesLedger.map(sale => (
+                                        <tr key={sale.id} className="border-b border-zinc-900 hover:bg-zinc-900/40 transition-colors">
+                                            <td className="p-4 text-[var(--text-muted)]">{new Date(sale.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                                            <td className="p-4">
+                                                <p className="text-[var(--text-main)] font-medium">{sale.vendor || 'Private Client'}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">{sale.purchase_method}</p>
+                                            </td>
+                                            <td className="p-4">
+                                                <p className="text-[var(--text-main)] opacity-80">{sale.product_name}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">{sale.actual_process_weight}g @ {Number(sale.actual_product_quality).toFixed(2)}%</p>
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <p className="text-[var(--text-main)] font-semibold">${Number(sale.subtotal).toLocaleString()}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">{Number(sale.total_ugx).toLocaleString()} UGX</p>
                                             </td>
                                         </tr>
                                     ))}
@@ -341,28 +410,150 @@ const POS = () => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="card p-6 border-l-4 border-emerald-500">
                                 <TrendingUp className="text-emerald-500 mb-4" size={24} />
-                                <p className="text-3xl font-bold text-white">${salesLedger.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}</p>
-                                <p className="text-sm text-zinc-500 mt-1">Today's Revenue (USD)</p>
+                                <p className="text-3xl font-bold text-[var(--text-main)]">${salesLedger.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}</p>
+                                <p className="text-sm text-[var(--text-muted)] mt-1">Today's Revenue (USD)</p>
                             </div>
                             <div className="card p-6 border-l-4 border-blue-500">
                                 <Calculator className="text-blue-500 mb-4" size={24} />
-                                <p className="text-3xl font-bold text-white">{salesLedger.length}</p>
-                                <p className="text-sm text-zinc-500 mt-1">Transaction Count</p>
+                                <p className="text-3xl font-bold text-[var(--text-main)]">{salesLedger.length}</p>
+                                <p className="text-sm text-[var(--text-muted)] mt-1">Transaction Count</p>
                             </div>
                             <div className="card p-6 border-l-4 border-purple-500">
                                 <Scale className="text-purple-500 mb-4" size={24} />
-                                <p className="text-3xl font-bold text-white">{salesLedger.reduce((acc, s) => acc + Number(s.actual_process_weight), 0).toFixed(2)}g</p>
-                                <p className="text-sm text-zinc-500 mt-1">Total Gold Weight</p>
+                                <p className="text-3xl font-bold text-[var(--text-main)]">{salesLedger.reduce((acc, s) => acc + Number(s.actual_process_weight), 0).toFixed(2)}g</p>
+                                <p className="text-sm text-[var(--text-muted)] mt-1">Total Gold Weight</p>
                             </div>
                         </div>
                         
                         <div className="card">
-                            <h3 className="text-lg font-medium text-white mb-6">Performance Insights</h3>
-                            <p className="text-zinc-500 text-sm">Your terminal current productivity is at target. Ensure all pending offline sales are synced once connectivity is restored.</p>
+                            <h3 className="text-lg font-medium text-[var(--text-main)] mb-6">Performance Insights</h3>
+                            <p className="text-[var(--text-muted)] text-sm">Your terminal current productivity is at target. Ensure all pending offline sales are synced once connectivity is restored.</p>
                         </div>
                     </div>
                 )}
             </main>
+
+            {/* Receipt Modal Overlay */}
+            {showReceipt && lastSavedSale && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:p-0 print:bg-white print:backdrop-blur-none print:static print:inset-auto">
+                    <div className="bg-white text-zinc-900 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col print:shadow-none print:rounded-none print:max-w-none print:w-full">
+                        {/* Modal Actions (Hidden on print) */}
+                        <div className="p-4 bg-zinc-50 border-b flex justify-between items-center print:hidden">
+                            <h3 className="font-semibold text-zinc-700 text-sm">Bill Generated Successfully</h3>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => window.print()}
+                                    className="px-4 py-2 bg-zinc-900 text-white rounded-md text-xs font-medium hover:bg-black transition-colors flex items-center gap-2"
+                                >
+                                    Print Bill
+                                </button>
+                                <button 
+                                    onClick={() => setShowReceipt(false)}
+                                    className="px-4 py-2 border border-zinc-200 text-zinc-600 rounded-md text-xs font-medium hover:bg-zinc-100 transition-colors"
+                                >
+                                    Dismiss
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Printable Receipt Area */}
+                        <div id="receipt-content" className="p-12 print:p-8 font-serif leading-relaxed overflow-y-auto print:overflow-visible">
+                            {/* Header */}
+                            <div className="flex justify-between items-start mb-8 border-b-2 border-black pb-6">
+                                <div>
+                                    <h1 className="text-2xl font-bold uppercase tracking-tighter mb-1">GOLD ERP</h1>
+                                    <p className="text-sm font-bold uppercase">{user?.branch_name || 'Main Branch'}</p>
+                                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">Official Sales Receipt</p>
+                                </div>
+                                <div className="text-right text-xs">
+                                    <div className="grid grid-cols-2 gap-x-4">
+                                        <span className="font-bold">Date:</span>
+                                        <span>{new Date(lastSavedSale.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}</span>
+                                        <span className="font-bold">PO#:</span>
+                                        <span className="font-mono">{lastSavedSale.id.split('-')[0].toUpperCase()}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Market Specs */}
+                            <div className="grid grid-cols-2 mb-8 text-xs border border-zinc-100 p-4 rounded-lg print:border-none print:p-0">
+                                <div className="space-y-1">
+                                    <div className="flex gap-4">
+                                        <span className="font-bold w-24 text-zinc-600">Mkt Price:</span>
+                                        <span>{Number(lastSavedSale.market_price).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <span className="font-bold w-24 text-zinc-600">Additions:</span>
+                                        <span>{Number(lastSavedSale.discount_addition).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                    </div>
+                                </div>
+                                <div className="text-right flex flex-col items-end justify-center">
+                                    <div className="flex gap-4">
+                                        <span className="font-bold text-zinc-600">Forex Rate:</span>
+                                        <span className="font-bold">{Number(lastSavedSale.currency_rate).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Table */}
+                            <table className="w-full text-xs mb-10 border-collapse">
+                                <thead>
+                                    <tr className="border-b-2 border-black text-left uppercase tracking-tighter">
+                                        <th className="py-2">SI #</th>
+                                        <th className="py-2">Qty (g)</th>
+                                        <th className="py-2">Qty (t)</th>
+                                        <th className="py-2">Tola Rate</th>
+                                        <th className="py-2">Purity %</th>
+                                        <th className="py-2">Unit Price</th>
+                                        <th className="py-2">Cur</th>
+                                        <th className="py-2 text-right">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr className="border-b border-zinc-200">
+                                        <td className="py-4 font-bold text-sm">RM</td>
+                                        <td className="py-4">{Number(lastSavedSale.actual_process_weight).toFixed(2)}</td>
+                                        <td className="py-4">{Number(lastSavedSale.qty_tolas).toFixed(3)}</td>
+                                        <td className="py-4">{Number(lastSavedSale.tola_rate).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                        <td className="py-4">{Number(lastSavedSale.actual_product_quality).toFixed(2)}%</td>
+                                        <td className="py-4">{(Number(lastSavedSale.unit_price)).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                        <td className="py-4">{lastSavedSale.transaction_currency}</td>
+                                        <td className="py-4 text-right font-bold">${Number(lastSavedSale.subtotal).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr className="border-t-2 border-black font-bold text-sm">
+                                        <td className="py-3">TOTAL</td>
+                                        <td className="py-3">{Number(lastSavedSale.actual_process_weight).toFixed(2)}</td>
+                                        <td className="py-3">{Number(lastSavedSale.qty_tolas).toFixed(3)}</td>
+                                        <td colSpan={4} className="py-3 text-right">PAYABLE USD $:</td>
+                                        <td className="py-3 text-right">${Number(lastSavedSale.subtotal).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+
+                            {/* Payment */}
+                            <div className="flex flex-col items-end gap-3 text-sm">
+                                <div className="flex gap-8 font-bold">
+                                    <span className="text-zinc-500 uppercase text-[10px]">Settled Amount:</span>
+                                    <span className="w-48 border-b-2 border-dotted border-black text-right pb-1">USD $: {Number(lastSavedSale.subtotal).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                </div>
+                                <div className="flex gap-8 font-bold text-xl mt-4 bg-zinc-50 p-4 border border-zinc-200 rounded-lg print:border-none print:p-0">
+                                    <span className="text-zinc-400 uppercase text-[10px] self-center">UGX Converted:</span>
+                                    <span className="w-56 text-right font-black">{Number(lastSavedSale.total_ugx).toLocaleString()} UGX</span>
+                                </div>
+                            </div>
+
+                            {/* Footer Note */}
+                            <div className="mt-16 text-[9px] text-center text-zinc-400 border-t border-dotted border-zinc-300 pt-6">
+                                <p className="font-bold tracking-[0.2em]">GOLD ERP CLOUD TERMINAL</p>
+                                <p className="mt-1 opacity-60">This is a computer-generated receipt. No signature required.</p>
+                                <p className="mt-1">Generated: {new Date(lastSavedSale.created_at).toLocaleString()}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
