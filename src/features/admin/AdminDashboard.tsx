@@ -20,13 +20,24 @@ import {
     ShieldCheck,
     ShieldAlert,
     Trash2,
-    ArrowLeft
+    ArrowLeft,
+    Sun,
+    Moon,
+    Bell,
+    Command
 } from 'lucide-react';
 
 const AdminDashboard = () => {
     const { token, user, rates } = useSelector((state: RootState) => state.auth);
     const dispatch = useDispatch();
     const navigate = useNavigate();
+
+    const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+    
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+    }, [theme]);
 
     const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -43,12 +54,12 @@ const AdminDashboard = () => {
     // Sales & Users State
     const [allSales, setAllSales] = useState<any[]>([]);
     const [usersList, setUsersList] = useState<any[]>([]);
-    
+
     // New Manager Form State
     const [newManagerUsername, setNewManagerUsername] = useState('');
     const [newManagerPassword, setNewManagerPassword] = useState('');
     const [newManagerEmail, setNewManagerEmail] = useState('');
-    
+
     // Expenses Global State
     const [expenses, setExpenses] = useState<any[]>([]);
 
@@ -155,275 +166,333 @@ const AdminDashboard = () => {
     const SidebarItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
         <button
             onClick={() => setActiveTab(id)}
-            className={`w-full flex items-center gap-3 px-6 py-3.5 transition-colors ${activeTab === id
-                    ? 'bg-zinc-800 text-white'
-                    : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+            className={`w-full flex items-center gap-3 px-6 py-4 transition-all relative group ${activeTab === id
+                ? 'text-white'
+                : 'text-zinc-500 hover:text-zinc-300'
                 }`}
         >
-            <Icon size={18} />
-            <span className="text-sm font-medium">{label}</span>
+            {activeTab === id && (
+                <div className="absolute left-0 w-1.5 h-6 bg-white rounded-r-full shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
+            )}
+            <Icon size={18} className={`${activeTab === id ? 'scale-110' : 'group-hover:scale-110'} transition-transform duration-300`} />
+            <span className="text-sm font-semibold tracking-wide">{label}</span>
         </button>
     );
 
     return (
-        <div className="flex h-[88vh] bg-zinc-950 font-sans overflow-hidden rounded-xl border border-zinc-900 shadow-2xl">
+        <div className="flex h-screen bg-[var(--bg-primary)] overflow-hidden transition-all duration-500">
             {/* Sidebar */}
-            <aside className="w-64 border-r border-zinc-900 flex flex-col bg-zinc-950">
-                <div className="p-6 border-b border-zinc-900 mb-4">
-                    <h1 className="text-xl font-bold text-white tracking-tight">Gold ERP Admin</h1>
+            <aside className="w-64 border-r border-[var(--border-color)] flex flex-col bg-[var(--bg-secondary)] glass z-10">
+                <div className="p-8 mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-[var(--accent-color)] rounded-xl flex items-center justify-center shadow-lg">
+                            <Command size={22} className="text-[var(--accent-text)]" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-black tracking-tighter leading-none">GOLD ERP</h1>
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">Admin Central</p>
+                        </div>
+                    </div>
                 </div>
 
-                <nav className="flex-1">
-                    <SidebarItem id="dashboard" label="Dashboard" icon={LayoutDashboard} />
-                    <SidebarItem id="sales" label="Sales & Billings" icon={ReceiptText} />
-                    <SidebarItem id="expenses" label="Expenses" icon={Wallet} />
-                    <SidebarItem id="branches" label="Branches" icon={Store} />
-                    <SidebarItem id="reports" label="Reports" icon={BarChart3} />
+                <nav className="flex-1 space-y-1">
+                    <SidebarItem id="dashboard" label="Command Center" icon={LayoutDashboard} />
+                    <SidebarItem id="branches" label="Global Nodes" icon={Store} />
+                    <SidebarItem id="expenses" label="Procurement" icon={Wallet} />
+                    <SidebarItem id="reports" label="Intelligence" icon={BarChart3} />
                 </nav>
 
-                <div className="p-6 border-t border-zinc-900">
-                    <button
-                        onClick={() => navigate('/login')}
-                        className="w-full flex items-center gap-3 text-zinc-400 hover:text-red-400 transition-colors py-2 text-sm font-medium"
+                <div className="p-6 border-t border-[var(--border-color)]">
+                    <button 
+                         onClick={() => { localStorage.removeItem('token'); navigate('/login'); }}
+                         className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-all group"
                     >
-                        <LogOut size={16} />
-                        Logout
+                        <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
+                        <span className="text-sm font-bold">Terminate Session</span>
                     </button>
                 </div>
             </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 overflow-y-auto p-8 relative">
-                {/* Header */}
-                <div className="mb-10 flex justify-between items-center">
-                    <div>
-                        <h2 className="text-2xl font-semibold text-white capitalize">
-                            {activeTab.replace('-', ' ')}
-                        </h2>
-                        <p className="text-sm text-zinc-500 mt-1">Management Overview</p>
-                    </div>
-                    <div className="flex items-center gap-4 bg-zinc-900 px-4 py-2 rounded-lg border border-zinc-800">
-                        <div className="text-right">
-                            <p className="text-xs text-zinc-500">Administrator</p>
-                            <p className="text-sm font-medium text-white">{user?.username}</p>
-                        </div>
-                    </div>
-                </div>
-
                 {/* Dashboard Tab */}
                 {activeTab === 'dashboard' && (
-                    <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="space-y-10 animate-in fade-in duration-500">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             {[
-                                { label: 'Total Revenue', value: `$${allSales.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}`, icon: TrendingUp, color: 'text-emerald-400' },
-                                { label: 'Transactions', value: allSales.length, icon: ReceiptText, color: 'text-blue-400' },
-                                { label: 'Branches', value: branches.length, icon: Store, color: 'text-purple-400' },
-                                { label: 'System Load', value: 'Optimal', icon: LayoutDashboard, color: 'text-amber-400' },
+                                { label: 'Total Revenue', value: `$${allSales.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}`, icon: TrendingUp, color: 'text-emerald-500' },
+                                { label: 'Total Volume', value: `${(allSales.reduce((acc, s) => acc + Number(s.grams), 0)).toFixed(2)}g`, icon: ReceiptText, color: 'text-blue-500' },
+                                { label: 'Active Nodes', value: branches.length, icon: Store, color: 'text-purple-500' },
+                                { label: 'System Status', value: 'Synced', icon: ShieldCheck, color: 'text-amber-500' },
                             ].map((stat, i) => (
-                                <div key={i} className="card p-6">
-                                    <div className={`p-2 w-fit rounded-lg bg-zinc-800 mb-4 ${stat.color}`}>
-                                        <stat.icon size={20} />
+                                <div key={i} className="card p-6 flex flex-col justify-between hover:shadow-xl hover:shadow-[var(--accent-color)]/5 transition-all group overflow-hidden relative">
+                                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-[var(--text-primary)] opacity-[0.02] rounded-full group-hover:scale-150 transition-transform duration-700"></div>
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className={`p-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)] ${stat.color} shadow-inner`}>
+                                            <stat.icon size={22} className="group-hover:rotate-12 transition-transform" />
+                                        </div>
+                                        <div className="h-1 w-12 bg-gradient-to-r from-transparent to-[var(--border-color)] rounded-full"></div>
                                     </div>
-                                    <p className="text-2xl font-semibold text-white">{stat.value}</p>
-                                    <p className="text-sm text-zinc-500 mt-1">{stat.label}</p>
+                                    <div>
+                                        <p className="text-3xl font-black text-[var(--text-primary)] tracking-tight">{stat.value}</p>
+                                        <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-widest mt-1.5">{stat.label}</p>
+                                    </div>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="card max-w-4xl">
-                            <h3 className="text-lg font-medium text-white mb-6">Global Market Rates</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-3">
-                                    <label className="text-sm text-zinc-500 font-medium">Spot Gold (USD/oz)</label>
-                                    <div className="flex items-center border-b border-zinc-800 pb-2">
-                                        <span className="text-zinc-600 mr-2 text-xl">$</span>
-                                        <input
-                                            type="number"
-                                            value={goldPrice}
-                                            onChange={e => setGoldPrice(Number(e.target.value))}
-                                            className="bg-transparent text-3xl font-semibold text-white w-full outline-none"
-                                        />
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                            <div className="card p-8 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <BarChart3 size={120} />
+                                </div>
+                                <h3 className="text-xl font-bold text-[var(--text-primary)] mb-8 flex items-center gap-3">
+                                    <div className="w-2 h-6 bg-[var(--accent-color)] rounded-full"></div>
+                                    Global Market Rates
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                    <div className="space-y-4">
+                                        <p className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-[0.2em]">Spot Gold Index</p>
+                                        <div className="flex items-center border-b-2 border-[var(--border-color)] pb-4 focus-within:border-[var(--text-primary)] transition-colors">
+                                            <span className="text-[var(--text-secondary)] mr-3 text-3xl font-light">$</span>
+                                            <input
+                                                type="number"
+                                                value={goldPrice}
+                                                onChange={e => setGoldPrice(Number(e.target.value))}
+                                                className="bg-transparent text-5xl font-black text-[var(--text-primary)] w-full outline-none tracking-tighter"
+                                            />
+                                            <span className="text-[10px] text-emerald-500 font-bold ml-2">USD/OZ</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <p className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-[0.2em]">Forex Base (UGX)</p>
+                                        <div className="flex items-center border-b-2 border-[var(--border-color)] pb-4 focus-within:border-[var(--text-primary)] transition-colors">
+                                            <input
+                                                type="number"
+                                                value={forexRate}
+                                                onChange={e => setForexRate(Number(e.target.value))}
+                                                className="bg-transparent text-5xl font-black text-[var(--text-primary)] w-full outline-none text-right tracking-tighter"
+                                            />
+                                            <span className="text-[var(--text-secondary)] ml-3 text-sm font-bold">UGX/USD</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="space-y-3">
-                                    <label className="text-sm text-zinc-500 font-medium">Forex Rate (UGX:USD)</label>
-                                    <div className="flex items-center border-b border-zinc-800 pb-2">
-                                        <input
-                                            type="number"
-                                            value={forexRate}
-                                            onChange={e => setForexRate(Number(e.target.value))}
-                                            className="bg-transparent text-3xl font-semibold text-white w-full outline-none text-right"
-                                        />
-                                        <span className="text-zinc-600 ml-2 text-sm font-medium">UGX</span>
-                                    </div>
+                                <button 
+                                    onClick={updateRates} 
+                                    className="btn-primary w-full mt-12 py-5 text-sm font-black uppercase tracking-widest shadow-xl shadow-black/20"
+                                >
+                                    Synchronize Global Nodes
+                                </button>
+                            </div>
+
+                            <div className="card p-8 bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] border-dashed border-2 flex flex-col items-center justify-center text-center space-y-6">
+                                <div className="w-16 h-16 rounded-full bg-zinc-500/10 flex items-center justify-center">
+                                    <LayoutDashboard size={32} className="text-zinc-500 opacity-20" />
+                                </div>
+                                <div>
+                                    <h4 className="text-lg font-bold text-[var(--text-primary)]">Advanced Analytics</h4>
+                                    <p className="text-sm text-[var(--text-secondary)] mt-1">Detailed periodic growth charts and audit logs will appear here in the next generation build.</p>
+                                </div>
+                                <div className="flex gap-2">
+                                     <div className="w-2 h-2 bg-zinc-800 rounded-full"></div>
+                                     <div className="w-2 h-2 bg-zinc-800 rounded-full"></div>
+                                     <div className="w-2 h-2 bg-zinc-800 rounded-full"></div>
                                 </div>
                             </div>
-                            <button onClick={updateRates} className="btn-primary w-full mt-8">Apply Global Rates</button>
                         </div>
                     </div>
                 )}
 
                 {/* Sales Tab */}
                 {activeTab === 'sales' && (
-                    <div className="animate-in fade-in duration-300">
-                        <div className="mb-6">
-                            <div className="relative max-w-sm">
-                                <Search className="absolute left-3 top-2.5 text-zinc-500" size={18} />
-                                <input type="text" placeholder="Search billing records..." className="bg-zinc-900 border border-zinc-800 rounded-md pl-10 pr-4 py-2 text-sm text-white w-full outline-none focus:border-zinc-500" />
+                    <div className="animate-in fade-in duration-500 space-y-6">
+                        <div className="flex items-center justify-between bg-[var(--bg-secondary)] p-6 rounded-2xl border border-[var(--border-color)] glass">
+                            <div className="relative max-w-sm w-full group">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-[var(--text-primary)] transition-colors" size={18} />
+                                <input 
+                                    type="text" 
+                                    placeholder="Trace Billing Identifier..." 
+                                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl pl-12 pr-4 py-3 text-sm text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-zinc-500/20 transition-all" 
+                                />
+                            </div>
+                            <div className="flex gap-3">
+                                <div className="px-4 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl text-[var(--text-secondary)] text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                                    Live Stream
+                                </div>
                             </div>
                         </div>
 
-                        <div className="card p-0 overflow-hidden">
-                            <table className="w-full text-left font-sans">
-                                <thead>
-                                    <tr className="border-b border-zinc-800 text-zinc-500 text-xs font-medium bg-zinc-900/50">
-                                        <th className="p-4">Date</th>
-                                        <th className="p-4">Vendor/Branch</th>
-                                        <th className="p-4">Product Details</th>
-                                        <th className="p-4 text-right">Total Amount</th>
-                                        <th className="p-4"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="text-sm">
-                                    {allSales.map(sale => (
-                                        <tr key={sale.id} className="border-b border-zinc-900 hover:bg-zinc-900/40 transition-colors group">
-                                            <td className="p-4 text-zinc-400">{new Date(sale.created_at).toLocaleDateString()}</td>
-                                            <td className="p-4">
-                                                <p className="text-white font-medium">{sale.vendor || 'Private'}</p>
-                                                <p className="text-xs text-zinc-600">{sale.branch_name}</p>
-                                            </td>
-                                            <td className="p-4">
-                                                <p className="text-zinc-300">{sale.product_name}</p>
-                                                <p className="text-xs text-zinc-600">{sale.actual_process_weight}g | {sale.actual_product_quality}%</p>
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <p className="text-white font-semibold">${Number(sale.subtotal).toLocaleString()}</p>
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <button className="text-zinc-600 hover:text-white"><ChevronRight size={18} /></button>
-                                            </td>
+                        <div className="card p-0 overflow-hidden glass border-[var(--border-color)]">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="border-b border-[var(--border-color)] text-[var(--text-secondary)] text-[10px] font-black uppercase tracking-[0.2em] bg-[var(--bg-secondary)]/50">
+                                            <th className="p-6">Timeline</th>
+                                            <th className="p-6">Branch Affinity</th>
+                                            <th className="p-6">Product Specifications</th>
+                                            <th className="p-6 text-right">Settlement</th>
+                                            <th className="p-6"></th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="text-sm">
+                                        {allSales.length > 0 ? (
+                                            allSales.map(sale => (
+                                                <tr key={sale.id} className="border-b border-[var(--border-color)] hover:bg-[var(--bg-secondary)] transition-all group">
+                                                    <td className="p-6 text-[var(--text-secondary)] font-medium">{new Date(sale.created_at).toLocaleDateString()}</td>
+                                                    <td className="p-6">
+                                                        <p className="text-[var(--text-primary)] font-bold">{sale.vendor || 'Authorized Merchant'}</p>
+                                                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter mt-0.5">{sale.branch_name}</p>
+                                                    </td>
+                                                    <td className="p-6">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[var(--text-primary)] font-medium">{sale.product_name}</span>
+                                                            <span className="text-[10px] bg-[var(--bg-primary)] text-[var(--text-secondary)] px-1.5 py-0.5 rounded border border-[var(--border-color)]">{sale.actual_product_quality}%</span>
+                                                        </div>
+                                                        <p className="text-xs text-zinc-500 mt-1">{sale.actual_process_weight}g Net Weight</p>
+                                                    </td>
+                                                    <td className="p-6 text-right">
+                                                        <p className="text-lg font-black text-[var(--text-primary)] tracking-tight">${Number(sale.subtotal).toLocaleString()}</p>
+                                                    </td>
+                                                    <td className="p-6 text-right">
+                                                        <button className="p-2 hover:bg-[var(--bg-primary)] rounded-lg text-zinc-600 hover:text-[var(--text-primary)] transition-all">
+                                                            <ChevronRight size={18} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={5} className="p-20 text-center">
+                                                    <div className="opacity-20 mb-4 flex justify-center">
+                                                        <Search size={48} />
+                                                    </div>
+                                                    <p className="text-[var(--text-secondary)] font-medium">Global ledger is currently empty.</p>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {/* Branches Tab */}
                 {activeTab === 'branches' && (
-                    <div className="animate-in fade-in duration-300">
+                    <div className="animate-in fade-in duration-500">
                         {!selectedBranchForManagers ? (
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 <div className="lg:col-span-2 space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {branches.map(b => (
                                             <div 
                                                 key={b.id} 
                                                 onClick={() => setSelectedBranchForManagers(b)}
-                                                className="card border-zinc-800 hover:border-zinc-700 transition-all cursor-pointer group"
+                                                className="card glass border-[var(--border-color)] hover:border-[var(--text-secondary)] transition-all cursor-pointer group relative overflow-hidden"
                                             >
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <Store className="text-zinc-600 group-hover:text-white transition-colors" size={24} />
-                                                    <span className="text-[10px] bg-emerald-900/30 text-emerald-400 px-2 py-0.5 rounded font-medium">Online</span>
+                                                <div className="absolute -right-8 -bottom-8 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity duration-500">
+                                                    <Store size={120} />
                                                 </div>
-                                                <h4 className="text-lg font-semibold text-white">{b.name}</h4>
-                                                <p className="text-sm text-zinc-500 mt-1">X-Factor: {b.x_factor}%</p>
-                                                <div className="mt-4 flex items-center text-xs text-zinc-400 font-medium group">
-                                                    Manage Node Personnel <ChevronRight size={14} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                                                <div className="flex justify-between items-start mb-6">
+                                                    <div className="p-3 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl">
+                                                        <Store className="text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors" size={24} />
+                                                    </div>
+                                                    <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-2 py-1 rounded-full font-black uppercase tracking-widest border border-emerald-500/20">Operational</span>
+                                                </div>
+                                                <h4 className="text-xl font-black text-[var(--text-primary)] tracking-tight">{b.name}</h4>
+                                                <p className="text-xs text-[var(--text-secondary)] mt-1 font-bold uppercase tracking-widest">Efficiency: {b.x_factor}%</p>
+                                                <div className="mt-8 flex items-center text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest group/link">
+                                                    Manage Personnel <ChevronRight size={14} className="ml-1 group-hover/link:translate-x-1 transition-transform" />
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
 
-                                <div className="card h-fit sticky top-0">
-                                    <div className="flex items-center gap-2 mb-6 text-white font-medium">
-                                        <Plus size={18} /> Add New Node
+                                <div className="card h-fit sticky top-8 glass border-[var(--border-color)]">
+                                    <div className="flex items-center gap-3 mb-8 text-[var(--text-primary)] font-black uppercase tracking-widest text-xs">
+                                        <Plus size={18} className="text-emerald-500" /> Initialize Node
                                     </div>
-                                    <div className="space-y-4">
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-zinc-500 font-medium">Branch Name</label>
-                                            <input type="text" value={branchName} onChange={e => setBranchName(e.target.value)} className="input-field" placeholder="Enter name" />
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest ml-1">Affiliate Title</label>
+                                            <input type="text" value={branchName} onChange={e => setBranchName(e.target.value)} className="input-field" placeholder="e.g. Dubai Central" />
                                         </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-zinc-500 font-medium">X-Factor (%)</label>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest ml-1">Variance Factor (%)</label>
                                             <input type="number" value={xFactor} onChange={e => setXFactor(Number(e.target.value))} className="input-field" />
                                         </div>
-                                        <button onClick={createBranch} className="btn-primary w-full mt-2">Create Branch</button>
+                                        <button onClick={createBranch} className="btn-primary w-full mt-4 py-4 font-black uppercase tracking-[0.2em] text-xs shadow-lg shadow-black/20">Deploy Node</button>
                                     </div>
                                 </div>
                             </div>
                         ) : (
-                            <div className="animate-in slide-in-from-right-4 duration-300 space-y-8">
+                            <div className="animate-in slide-in-from-right-8 duration-500 space-y-8">
                                 {/* Personnel Management Header */}
-                                <div className="flex items-center justify-between bg-zinc-900/40 p-6 rounded-xl border border-zinc-800/60">
-                                    <div className="flex items-center gap-6">
+                                <div className="flex items-center justify-between bg-[var(--bg-secondary)] p-8 rounded-2xl border border-[var(--border-color)] glass">
+                                    <div className="flex items-center gap-8">
                                         <button 
                                             onClick={() => setSelectedBranchForManagers(null)}
-                                            className="p-2.5 hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-all bg-zinc-900 border border-zinc-800"
+                                            className="p-3 hover:bg-[var(--bg-primary)] rounded-xl text-zinc-500 hover:text-[var(--text-primary)] transition-all bg-[var(--bg-secondary)] border border-[var(--border-color)] shadow-sm"
                                         >
-                                            <ArrowLeft size={20} />
+                                            <ArrowLeft size={22} />
                                         </button>
                                         <div>
-                                            <h3 className="text-2xl font-bold text-white">{selectedBranchForManagers.name}</h3>
-                                            <p className="text-sm text-zinc-500 mt-0.5">Personnel Management & Oversight</p>
+                                            <h3 className="text-3xl font-black text-[var(--text-primary)] tracking-tight">{selectedBranchForManagers.name}</h3>
+                                            <p className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-[0.3em] mt-1">Intelligence & Personnel Oversight</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-6">
                                         <div className="text-right hidden md:block">
-                                            <p className="text-xs text-zinc-500 uppercase font-bold tracking-tighter">Node Constants</p>
-                                            <p className="text-sm text-white font-semibold">{selectedBranchForManagers.x_factor}% X-Factor</p>
+                                            <p className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest leading-none">Efficiency Target</p>
+                                            <p className="text-xl text-[var(--text-primary)] font-black tracking-tighter mt-1">{selectedBranchForManagers.x_factor}%</p>
                                         </div>
-                                        <div className="h-10 w-[1px] bg-zinc-800 mx-2 hidden md:block"></div>
-                                        <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400 text-xs font-bold uppercase tracking-widest">
+                                        <div className="h-10 w-[2px] bg-[var(--border-color)] rounded-full hidden md:block"></div>
+                                        <div className="px-5 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-500 text-[10px] font-black uppercase tracking-[0.3em]">
                                             Operational
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                                <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
                                     {/* Existing Managers Section */}
-                                    <div className="xl:col-span-2 space-y-6">
-                                        <div className="flex items-center justify-between">
-                                            <h4 className="text-sm font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                                                <Users size={18} /> Node Management Hierarchy
+                                    <div className="xl:col-span-2 space-y-8">
+                                        <div className="flex items-center justify-between px-2">
+                                            <h4 className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.3em] flex items-center gap-3">
+                                                <Users size={18} className="text-zinc-500" /> Operational High-Command
                                             </h4>
-                                            <span className="text-[10px] bg-zinc-900 text-zinc-500 px-2 py-1 rounded-full border border-zinc-800 font-bold">
-                                                {usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').length} ASSIGNED
+                                            <span className="text-[10px] bg-[var(--bg-secondary)] text-[var(--text-secondary)] px-3 py-1.5 rounded-full border border-[var(--border-color)] font-black">
+                                                {usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').length} STATIONS
                                             </span>
                                         </div>
                                         <div className="space-y-4">
                                             {usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').length > 0 ? (
                                                 usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').map(m => (
-                                                    <div key={m.id} className="card flex justify-between items-center p-5 group hover:border-zinc-700 transition-all bg-zinc-950/50 backdrop-blur-sm">
-                                                        <div className="flex items-center gap-5">
-                                                            <div className={`p-3 rounded-xl border ${m.is_active ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
-                                                                <Users size={22} />
+                                                    <div key={m.id} className="card glass flex justify-between items-center p-6 group hover:border-[var(--text-secondary)] transition-all bg-[var(--bg-secondary)]/30">
+                                                        <div className="flex items-center gap-6">
+                                                            <div className={`p-4 rounded-2xl border ${m.is_active ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
+                                                                <Users size={24} />
                                                             </div>
                                                             <div>
-                                                                <div className="flex items-center gap-3">
-                                                                    <p className="text-lg font-semibold text-white">{m.username}</p>
+                                                                <div className="flex items-center gap-4">
+                                                                    <p className="text-xl font-black text-[var(--text-primary)] tracking-tight">{m.username}</p>
                                                                     {m.is_active ? 
-                                                                         <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter shadow-sm border border-emerald-500/40">Active</span> : 
-                                                                         <span className="text-[9px] bg-red-500/20 text-red-500 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter shadow-sm border border-red-500/40">Suspended</span>
+                                                                         <span className="text-[8px] bg-emerald-500 text-white px-2 py-0.5 rounded font-black uppercase tracking-tighter shadow-lg shadow-emerald-500/20">Active</span> : 
+                                                                         <span className="text-[8px] bg-red-500 text-white px-2 py-0.5 rounded font-black uppercase tracking-tighter shadow-lg shadow-red-500/20">Offline</span>
                                                                      }
                                                                 </div>
-                                                                <p className="text-sm text-zinc-500 mt-0.5">{m.email || 'System Default Auth'}</p>
+                                                                <p className="text-xs text-[var(--text-secondary)] font-medium mt-1">{m.email || 'NODE_AUTH_LEGACY'}</p>
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-3">
                                                             <button 
                                                                 onClick={() => toggleUserStatus(m.id)}
-                                                                className={`p-2.5 rounded-xl transition-all border ${m.is_active ? 'bg-zinc-900 border-zinc-800 text-emerald-400 hover:text-amber-400 hover:border-amber-400/40' : 'bg-zinc-900 border-zinc-800 text-red-500 hover:text-emerald-400 hover:border-emerald-400/40'}`}
-                                                                title={m.is_active ? "Suspend Manager Access" : "Grant Manager Access"}
+                                                                className={`p-3 rounded-xl transition-all border shadow-sm ${m.is_active ? 'bg-[var(--bg-primary)] border-[var(--border-color)] text-emerald-500 hover:text-amber-500 hover:border-amber-500/40' : 'bg-[var(--bg-primary)] border-[var(--border-color)] text-red-500 hover:text-emerald-500 hover:border-emerald-400/40'}`}
                                                             >
                                                                 {m.is_active ? <ShieldCheck size={20} /> : <ShieldAlert size={20} />}
                                                             </button>
                                                             <button 
                                                                 onClick={() => deleteUser(m.id)}
-                                                                className="p-2.5 bg-zinc-900 border border-zinc-800 hover:border-red-500/40 text-zinc-600 hover:text-red-500 rounded-xl transition-all"
-                                                                title="Revoke Credentials"
+                                                                className="p-3 bg-[var(--bg-primary)] border border-[var(--border-color)] hover:border-red-500/40 text-[var(--text-secondary)] hover:text-red-500 rounded-xl transition-all shadow-sm"
                                                             >
                                                                 <Trash2 size={20} />
                                                             </button>
@@ -431,60 +500,54 @@ const AdminDashboard = () => {
                                                     </div>
                                                 ))
                                             ) : (
-                                                <div className="card p-12 text-center border-dashed border-zinc-800 bg-transparent">
-                                                    <Users size={40} className="mx-auto text-zinc-800 mb-4" />
-                                                    <p className="text-zinc-500 font-medium">No managers have been provisioned for this node.</p>
-                                                    <p className="text-xs text-zinc-600 mt-1">Use the assignment portal to grant access.</p>
+                                                <div className="card p-20 text-center border-dashed border-2 border-[var(--border-color)] bg-transparent">
+                                                    <Users size={48} className="mx-auto text-zinc-800 mb-6 opacity-20" />
+                                                    <p className="text-[var(--text-secondary)] font-black uppercase tracking-[0.2em] text-xs">No Node Commanders Assigned</p>
                                                 </div>
                                             )}
                                         </div>
                                     </div>
 
                                     {/* Assignment Portal Area */}
-                                    <div className="space-y-6">
-                                        <h4 className="text-sm font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                                            <Plus size={18} /> Provisioning Portal
-                                        </h4>
-                                        <div className="card p-6 bg-zinc-900/20 border-zinc-800/60 sticky top-8">
-                                            <p className="text-xs text-zinc-500 mb-6 font-medium leading-relaxed">
-                                                Provisioning a new manager grants them administrative oversight over this branch's sales and gold procurement records.
-                                            </p>
-                                            <div className="space-y-4">
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] text-zinc-500 uppercase font-black tracking-widest ml-1">Unique Identifier</label>
+                                    <div className="space-y-8">
+                                        <h4 className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.3em] ml-2">Commander Provisioning</h4>
+                                        <div className="card p-8 bg-[var(--bg-secondary)] border-[var(--border-color)] glass sticky top-32">
+                                            <div className="space-y-6">
+                                                <div className="space-y-2">
+                                                    <label className="text-[9px] text-[var(--text-secondary)] uppercase font-black tracking-widest ml-1">Terminal ID</label>
                                                     <input 
                                                         type="text" 
-                                                        placeholder="e.g. manager_dubai" 
+                                                        placeholder="e.g. comms_alpha" 
                                                         value={newManagerUsername} 
                                                         onChange={e => setNewManagerUsername(e.target.value)} 
-                                                        className="input-field py-3 bg-zinc-950" 
+                                                        className="input-field py-4 bg-[var(--bg-primary)]" 
                                                     />
                                                 </div>
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] text-zinc-500 uppercase font-black tracking-widest ml-1">Communication Link</label>
+                                                <div className="space-y-2">
+                                                    <label className="text-[9px] text-[var(--text-secondary)] uppercase font-black tracking-widest ml-1">Secure Channel</label>
                                                     <input 
                                                         type="email" 
-                                                        placeholder="manager@branch.com" 
+                                                        placeholder="secure@node.erp" 
                                                         value={newManagerEmail} 
                                                         onChange={e => setNewManagerEmail(e.target.value)} 
-                                                        className="input-field py-3 bg-zinc-950" 
+                                                        className="input-field py-4 bg-[var(--bg-primary)]" 
                                                     />
                                                 </div>
-                                                <div className="space-y-1.5">
-                                                    <label className="text-[10px] text-zinc-500 uppercase font-black tracking-widest ml-1">Gateway Passkey</label>
+                                                <div className="space-y-2">
+                                                    <label className="text-[9px] text-[var(--text-secondary)] uppercase font-black tracking-widest ml-1">Access Passkey</label>
                                                     <input 
                                                         type="password" 
-                                                        placeholder="Secure Credentials" 
+                                                        placeholder="••••••••••••" 
                                                         value={newManagerPassword} 
                                                         onChange={e => setNewManagerPassword(e.target.value)} 
-                                                        className="input-field py-3 bg-zinc-950" 
+                                                        className="input-field py-4 bg-[var(--bg-primary)]" 
                                                     />
                                                 </div>
                                                 <button 
                                                     onClick={() => createManager(selectedBranchForManagers.id)} 
-                                                    className="btn-primary w-full py-4 mt-4 font-bold tracking-tight shadow-lg shadow-white/5 active:scale-[0.98] transition-transform"
+                                                    className="btn-primary w-full py-5 mt-6 font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-black/40"
                                                 >
-                                                    Finalize Node Assignment
+                                                    Authorize Deployment
                                                 </button>
                                             </div>
                                         </div>
@@ -497,42 +560,69 @@ const AdminDashboard = () => {
 
                 {/* Expenses Tab */}
                 {activeTab === 'expenses' && (
-                    <div className="animate-in fade-in duration-300">
-                        <div className="mb-6 flex justify-between items-center">
-                            <h2 className="text-xl font-semibold text-white">Global Procurement Ledger</h2>
-                            <button onClick={fetchExpenses} className="text-zinc-500 hover:text-white transition-colors">
-                                <Search size={18} />
+                    <div className="animate-in fade-in duration-500 space-y-10">
+                        <div className="flex justify-between items-center bg-[var(--bg-secondary)] p-8 rounded-2xl border border-[var(--border-color)] glass">
+                            <div>
+                                <h2 className="text-3xl font-black text-[var(--text-primary)] tracking-tight">Procurement Intelligence</h2>
+                                <p className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-[0.3em] mt-1">Cross-Node Expenditure Audit</p>
+                            </div>
+                            <button 
+                                onClick={fetchExpenses} 
+                                className="p-4 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl text-zinc-500 hover:text-[var(--text-primary)] hover:border-[var(--text-secondary)] transition-all shadow-sm active:scale-95"
+                                title="Refresh Ledger"
+                            >
+                                <TrendingUp size={24} className="rotate-90" />
                             </button>
                         </div>
-                        <div className="card p-0 overflow-hidden">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="border-b border-zinc-800 text-zinc-500 text-xs font-medium bg-zinc-900/50">
-                                        <th className="p-4">Date</th>
-                                        <th className="p-4">Branch</th>
-                                        <th className="p-4">Source</th>
-                                        <th className="p-4">Specifications</th>
-                                        <th className="p-4 text-right">Total Settlement</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="text-sm">
-                                    {expenses.length > 0 ? (
-                                        expenses.map(exp => (
-                                            <tr key={exp.id} className="border-b border-zinc-900 hover:bg-zinc-900/40 transition-colors">
-                                                <td className="p-4 text-zinc-400">{exp.date}</td>
-                                                <td className="p-4 font-medium text-white">{exp.branch_name}</td>
-                                                <td className="p-4 text-zinc-300 uppercase">{exp.source_name}</td>
-                                                <td className="p-4 text-zinc-500">{exp.grams}g @ ${exp.rate_per_gram}</td>
-                                                <td className="p-4 text-right font-bold text-white">${Number(exp.total).toLocaleString()}</td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={5} className="p-10 text-center text-zinc-600 italic">No procurement records found globally.</td>
+
+                        <div className="card p-0 overflow-hidden glass border-[var(--border-color)]">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="border-b border-[var(--border-color)] text-[var(--text-secondary)] text-[10px] font-black uppercase tracking-[0.2em] bg-[var(--bg-secondary)]/50">
+                                            <th className="p-6">Registry Date</th>
+                                            <th className="p-6">Origin Node</th>
+                                            <th className="p-6">Liquidity Source</th>
+                                            <th className="p-6">Quantum Specs</th>
+                                            <th className="p-6 text-right">Settlement Vault</th>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="text-sm">
+                                        {expenses.length > 0 ? (
+                                            expenses.map(exp => (
+                                                <tr key={exp.id} className="border-b border-[var(--border-color)] hover:bg-[var(--bg-secondary)] transition-all group">
+                                                    <td className="p-6 text-[var(--text-secondary)] font-medium">{new Date(exp.date).toLocaleDateString()}</td>
+                                                    <td className="p-6">
+                                                        <span className="px-3 py-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-full text-[var(--text-primary)] font-bold text-xs">
+                                                            {exp.branch_name}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-6 text-[var(--text-primary)] font-black uppercase tracking-tighter">{exp.source_name}</td>
+                                                    <td className="p-6">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[var(--text-primary)] font-bold">{exp.grams}g</span>
+                                                            <span className="text-zinc-500">@</span>
+                                                            <span className="text-zinc-500 font-medium">${exp.rate_per_gram}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-6 text-right">
+                                                        <p className="text-xl font-black text-[var(--text-primary)] tracking-tight">${Number(exp.total).toLocaleString()}</p>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={5} className="p-24 text-center">
+                                                    <div className="opacity-10 mb-6 flex justify-center">
+                                                        <ReceiptText size={64} />
+                                                    </div>
+                                                    <p className="text-[var(--text-secondary)] font-black uppercase tracking-[0.2em] text-xs">No Procurement Records Detected</p>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}
