@@ -166,16 +166,16 @@ const AdminDashboard = () => {
     const SidebarItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
         <button
             onClick={() => setActiveTab(id)}
-            className={`w-full flex items-center gap-4 px-6 py-4.5 transition-all relative group ${activeTab === id
+            className={`w-full flex items-center gap-3 px-6 py-4 transition-all relative group ${activeTab === id
                 ? 'text-[var(--text-primary)]'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                : 'text-zinc-500 hover:text-zinc-300'
                 }`}
         >
             {activeTab === id && (
-                <div className="absolute left-0 w-1.5 h-7 bg-[var(--accent-color)] rounded-r-full shadow-[0_0_20px_var(--accent-color)]" />
+                <div className="absolute left-0 w-1.5 h-6 bg-[var(--accent-color)] rounded-r-full shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
             )}
-            <Icon size={22} className={`${activeTab === id ? 'scale-110 text-[var(--accent-color)]' : 'group-hover:scale-110'} transition-all duration-300`} />
-            <span className="text-base font-bold tracking-tight">{label}</span>
+            <Icon size={18} className={`${activeTab === id ? 'scale-110' : 'group-hover:scale-110'} transition-transform duration-300`} />
+            <span className="text-sm font-semibold tracking-wide">{label}</span>
         </button>
     );
 
@@ -183,45 +183,33 @@ const AdminDashboard = () => {
         <div className="flex h-screen bg-[var(--bg-primary)] overflow-hidden transition-all duration-500">
             {/* Sidebar */}
             <aside className="w-64 border-r border-[var(--border-color)] flex flex-col bg-[var(--bg-secondary)] glass z-10">
-                <div className="p-8 mb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[var(--accent-color)] rounded-xl flex items-center justify-center shadow-lg">
-                            <Command size={22} className="text-[var(--accent-text)]" />
-                        </div>
-                        <div>
-                            <h1 className="text-xl font-black tracking-tighter leading-none">GOLD ERP</h1>
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">Admin Central</p>
-                        </div>
-                    </div>
-                </div>
-
-                <nav className="flex-1 space-y-1">
+                <nav className="flex-1 space-y-1 pt-8">
                     <SidebarItem id="dashboard" label="Command Center" icon={LayoutDashboard} />
                     <SidebarItem id="branches" label="Global Nodes" icon={Store} />
                     <SidebarItem id="expenses" label="Procurement" icon={Wallet} />
                     <SidebarItem id="reports" label="Intelligence" icon={BarChart3} />
                 </nav>
 
-                <div className="p-4 mt-auto border-t border-[var(--border-color)] bg-[var(--bg-primary)]/30">
-                    <div className="flex items-center gap-4 p-3 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border-color)] group hover:border-[var(--text-secondary)] transition-all">
-                        <div className="relative">
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-zinc-700 to-zinc-900 border border-[var(--border-color)] shadow-lg overflow-hidden flex-shrink-0">
-                                <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`} alt="avatar" />
-                            </div>
-                            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-4 border-[var(--bg-secondary)] rounded-full shadow-emerald-500/20"></div>
+                <div className="p-4 mt-auto border-t border-[var(--border-color)] bg-[var(--bg-primary)]/40">
+                    <div className="flex items-center gap-3 p-2 mb-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] shadow-sm">
+                        <div className="w-10 h-10 bg-gradient-to-br from-zinc-700 to-zinc-900 rounded-lg border border-[var(--border-color)] overflow-hidden shrink-0">
+                            <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`} alt="avatar" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-black text-[var(--text-primary)] truncate tracking-tight lowercase">@{user?.username}</p>
-                            <p className="text-[9px] text-[var(--text-secondary)] font-black uppercase tracking-[0.2em] mt-0.5">SUPER_USER</p>
+                        <div className="min-w-0 pr-2">
+                            <p className="text-xs font-black uppercase tracking-tighter leading-none text-[var(--text-primary)] truncate">{user?.username}</p>
+                            <p className="text-[9px] text-emerald-500 font-bold tracking-widest mt-1 flex items-center gap-1">
+                                <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></div>
+                                ONLINE
+                            </p>
                         </div>
-                        <button 
-                            onClick={() => { localStorage.removeItem('token'); navigate('/login'); }}
-                            className="p-2.5 hover:bg-red-500/10 text-zinc-600 hover:text-red-500 rounded-xl transition-all"
-                            title="Terminate Session"
-                        >
-                            <LogOut size={18} />
-                        </button>
                     </div>
+                    <button 
+                         onClick={() => { localStorage.removeItem('token'); navigate('/login'); }}
+                         className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all font-bold text-xs ring-1 ring-red-500/20 active:scale-95 group"
+                    >
+                        <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        TERMINATE SESSION
+                    </button>
                 </div>
             </aside>
 
@@ -247,14 +235,16 @@ const AdminDashboard = () => {
                             <span className="text-[10px] font-bold text-zinc-600 bg-[var(--bg-primary)] px-1.5 py-0.5 rounded border border-[var(--border-color)]">⌘ K</span>
                         </div>
 
-                        <div className="flex items-center gap-2 border-l border-[var(--border-color)] pl-6">
+                        <div className="flex items-center gap-4 border-l border-[var(--border-color)] pl-6">
                             {/* Theme Toggle */}
                             <button
                                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                                 className="p-2.5 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl text-zinc-500 hover:text-[var(--text-primary)] transition-all"
                             >
                                 {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                            </button>                             {/* Notifications */}
+                            </button>
+
+                            {/* Notifications */}
                             <button className="p-2.5 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl text-zinc-500 hover:text-[var(--text-primary)] relative">
                                 <Bell size={18} />
                                 <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-emerald-500 rounded-full ring-4 ring-[var(--bg-secondary)]"></div>
