@@ -213,6 +213,60 @@ const AdminDashboard = () => {
                 </div>
             </aside>
 
+            {/* Main Content Area */}
+            <main className="flex-1 flex flex-col min-w-0 relative">
+                {/* Top Header */}
+                <header className="h-20 border-b border-[var(--border-color)] flex items-center justify-between px-10 bg-[var(--bg-primary)] glass sticky top-0 z-20">
+                    <div className="flex items-center gap-4">
+                        <span className="text-xs text-[var(--text-secondary)] font-bold uppercase tracking-widest">Admin</span>
+                        <div className="w-1 h-1 bg-zinc-700 rounded-full"></div>
+                        <h2 className="text-sm font-bold text-[var(--text-primary)] capitalize">{activeTab}</h2>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                        {/* Search Bar */}
+                        <div className="hidden lg:flex items-center gap-3 bg-[var(--bg-secondary)] border border-[var(--border-color)] px-4 py-2 rounded-xl group transition-all focus-within:ring-2 focus-within:ring-zinc-500/20">
+                            <Search size={16} className="text-zinc-600" />
+                            <input 
+                                type="text" 
+                                placeholder="Command Search..." 
+                                className="bg-transparent border-none text-xs text-[var(--text-primary)] focus:outline-none w-48"
+                            />
+                            <span className="text-[10px] font-bold text-zinc-600 bg-[var(--bg-primary)] px-1.5 py-0.5 rounded border border-[var(--border-color)]">⌘ K</span>
+                        </div>
+
+                        <div className="flex items-center gap-2 border-l border-[var(--border-color)] pl-6">
+                            {/* Theme Toggle */}
+                            <button 
+                                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                                className="p-2.5 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl text-zinc-500 hover:text-[var(--text-primary)] transition-all"
+                            >
+                                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                            </button>
+
+                            {/* Notifications */}
+                            <button className="p-2.5 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl text-zinc-500 hover:text-[var(--text-primary)] relative">
+                                <Bell size={18} />
+                                <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-emerald-500 rounded-full ring-4 ring-[var(--bg-secondary)]"></div>
+                            </button>
+
+                            {/* Profile */}
+                            <div className="flex items-center gap-3 ml-2 pl-4 border-l border-[var(--border-color)]">
+                                <div className="text-right hidden sm:block">
+                                    <p className="text-xs font-black uppercase tracking-tighter leading-none">{user?.username}</p>
+                                    <p className="text-[10px] text-zinc-500 font-bold tracking-widest mt-1">SUPER_USER</p>
+                                </div>
+                                <div className="w-10 h-10 bg-gradient-to-br from-zinc-700 to-zinc-900 rounded-full border-2 border-[var(--border-color)] shadow-xl overflow-hidden ring-2 ring-emerald-500/20">
+                                     <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`} alt="avatar" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                {/* Dashboard Scroll Area */}
+                <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+
                 {/* Dashboard Tab */}
                 {activeTab === 'dashboard' && (
                     <div className="space-y-10 animate-in fade-in duration-500">
@@ -635,6 +689,7 @@ const AdminDashboard = () => {
                         <p className="text-sm mt-1">Advanced analytics modules coming soon</p>
                     </div>
                 )}
+                </div>
             </main>
         </div>
     );

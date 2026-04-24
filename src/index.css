@@ -83,6 +83,7 @@ button, a, .card {
 input, textarea {
   user-select: text;
 }
+}
 
 @layer components {
   .input-field {
