@@ -13,7 +13,10 @@ import {
     Search,
     ChevronRight,
     TrendingUp,
-    Wallet
+    Wallet,
+    Trash2,
+    ShieldCheck,
+    ShieldAlert
 } from 'lucide-react';
 
 const ManagerDashboard = () => {
@@ -113,6 +116,25 @@ const ManagerDashboard = () => {
             fetchExpenses();
             alert('Gold procurement expense recorded.');
         } catch (e) { alert('Failed to record expense. Please ensure all fields are filled correctly.'); }
+    };
+
+    const toggleUserStatus = async (id: number) => {
+        try {
+            await axios.patch(`http://127.0.0.1:8000/api/users/${id}/toggle/`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchStaff();
+        } catch (e) { alert('Access update failed.'); }
+    };
+
+    const deleteUser = async (id: number) => {
+        if (!window.confirm('Permanently decommission this terminal? All associated history remains archived.')) return;
+        try {
+            await axios.delete(`http://127.0.0.1:8000/api/users/${id}/delete/`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchStaff();
+        } catch (e) { alert('Decommissioning failed.'); }
     };
 
     const SidebarItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
@@ -332,16 +354,38 @@ const ManagerDashboard = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
                         <div className="lg:col-span-2 space-y-4">
                             {staffList.filter(s => s.role === 'STAFF').map(s => (
-                                <div key={s.id} className="card flex justify-between items-center">
-                                    <div className="flex items-center gap-4">
-                                        <Monitor className="text-zinc-600" size={24} />
-                                        <div>
-                                            <p className="text-white font-semibold">{s.username}</p>
-                                            <p className="text-xs text-zinc-500">Active Node</p>
-                                        </div>
-                                    </div>
-                                    <ChevronRight className="text-zinc-700" size={18} />
-                                </div>
+                                <div key={s.id} className="card flex justify-between items-center p-5 group hover:border-zinc-700 transition-all">
+                                     <div className="flex items-center gap-4">
+                                         <div className={`p-3 rounded-lg ${s.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-500'}`}>
+                                             <Monitor size={20} />
+                                         </div>
+                                         <div>
+                                             <p className="text-white font-semibold flex items-center gap-2">
+                                                 {s.username}
+                                                 {s.is_active ? 
+                                                     <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider">Online</span> : 
+                                                     <span className="text-[10px] bg-red-500/20 text-red-500 px-1.5 py-0.5 rounded uppercase tracking-wider">Disabled</span>
+                                                 }
+                                             </p>
+                                             <p className="text-xs text-zinc-500">{s.email || 'No email assigned'}</p>
+                                         </div>
+                                     </div>
+                                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                         <button 
+                                             onClick={() => toggleUserStatus(s.id)}
+                                             title={s.is_active ? "Assess Permission (Revoke)" : "Grant Access"}
+                                             className={`p-2 rounded-md transition-colors ${s.is_active ? 'hover:bg-amber-500/20 text-emerald-400 hover:text-amber-400' : 'hover:bg-emerald-500/20 text-red-500 hover:text-emerald-400'}`}
+                                         >
+                                             {s.is_active ? <ShieldCheck size={18} /> : <ShieldAlert size={18} />}
+                                         </button>
+                                         <button 
+                                             onClick={() => deleteUser(s.id)}
+                                             className="p-2 hover:bg-red-500/20 text-zinc-600 hover:text-red-500 rounded-md transition-colors"
+                                         >
+                                             <Trash2 size={18} />
+                                         </button>
+                                     </div>
+                                 </div>
                             ))}
                         </div>
 

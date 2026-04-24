@@ -16,7 +16,10 @@ import {
     ChevronRight,
     Search,
     Users,
-    X
+    X,
+    ShieldCheck,
+    ShieldAlert,
+    Trash2
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -127,6 +130,25 @@ const AdminDashboard = () => {
             fetchUsers();
             alert('Manager assigned to branch.');
         } catch (e) { alert('Failed to assign manager.'); }
+    };
+
+    const toggleUserStatus = async (id: number) => {
+        try {
+            await axios.patch(`http://127.0.0.1:8000/api/users/${id}/toggle/`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchUsers();
+        } catch (e) { alert('Access update failed.'); }
+    };
+
+    const deleteUser = async (id: number) => {
+        if (!window.confirm('Permanently remove this manager? This action is irreversible.')) return;
+        try {
+            await axios.delete(`http://127.0.0.1:8000/api/users/${id}/delete/`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchUsers();
+        } catch (e) { alert('Manager removal failed.'); }
     };
 
     const SidebarItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
@@ -354,12 +376,37 @@ const AdminDashboard = () => {
                                     <div className="space-y-3">
                                         {usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').length > 0 ? (
                                             usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').map(m => (
-                                                <div key={m.id} className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg flex justify-between items-center">
-                                                    <div>
-                                                        <p className="text-sm font-medium text-white">{m.username}</p>
-                                                        <p className="text-xs text-zinc-600">{m.email}</p>
+                                                <div key={m.id} className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg flex justify-between items-center group hover:border-zinc-700 transition-all">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`p-2 rounded-lg ${m.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-500'}`}>
+                                                            <Users size={18} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-white flex items-center gap-2">
+                                                                {m.username}
+                                                                {m.is_active ? 
+                                                                     <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">ACTIVE</span> : 
+                                                                     <span className="text-[10px] bg-red-500/20 text-red-500 px-1.5 py-0.5 rounded">DISABLED</span>
+                                                                 }
+                                                            </p>
+                                                            <p className="text-xs text-zinc-600">{m.email}</p>
+                                                        </div>
                                                     </div>
-                                                    <span className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-1 rounded">ACTIVE</span>
+                                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button 
+                                                            onClick={() => toggleUserStatus(m.id)}
+                                                            className={`p-2 rounded-md transition-colors ${m.is_active ? 'hover:bg-amber-500/10 text-emerald-400 hover:text-amber-400' : 'hover:bg-emerald-500/10 text-red-500 hover:text-emerald-400'}`}
+                                                            title={m.is_active ? "Suspend Manager" : "Reactivate Manager"}
+                                                        >
+                                                            {m.is_active ? <ShieldCheck size={16} /> : <ShieldAlert size={16} />}
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => deleteUser(m.id)}
+                                                            className="p-2 hover:bg-red-500/10 text-zinc-600 hover:text-red-500 rounded-md transition-colors"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             ))
                                         ) : (
