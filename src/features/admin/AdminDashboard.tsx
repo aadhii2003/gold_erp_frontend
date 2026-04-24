@@ -262,7 +262,6 @@ const AdminDashboard = () => {
                         </div>
                     </div>
                 </header>
->
 
                 {/* Dashboard Scroll Area */}
                 <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
