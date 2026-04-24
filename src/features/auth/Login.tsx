@@ -45,7 +45,7 @@ const Login = () => {
                 {error && <div className="bg-red-900/50 text-red-200 p-3 rounded mb-4 text-sm">{error}</div>}
                 <form onSubmit={handleLogin} className="space-y-4">
                     <div>
-                        <label className="block text-zinc-400 mb-2">Username</label>
+                        <label className="block text-[var(--text-muted)] mb-2">Username</label>
                         <input
                             type="text"
                             value={username}
@@ -55,7 +55,7 @@ const Login = () => {
                         />
                     </div>
                     <div>
-                        <label className="block text-zinc-400 mb-2">Password</label>
+                        <label className="block text-[var(--text-muted)] mb-2">Password</label>
                         <input
                             type="password"
                             value={password}
