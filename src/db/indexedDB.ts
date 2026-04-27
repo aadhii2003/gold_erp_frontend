@@ -5,7 +5,7 @@ const STORE_NAME = 'sales';
 const USER_STORE = 'users';
 
 export const initDB = async () => {
-    return openDB(DB_NAME, 1, {
+    return openDB(DB_NAME, 2, {
         upgrade(db) {
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME, { keyPath: 'id' });

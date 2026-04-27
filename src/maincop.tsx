@@ -26,7 +26,6 @@ ReactDOM.createRoot(rootElement).render(
           <Routes>
             <Route path="/" element={<App />}>
               <Route index element={<Login />} />
-              <Route path="login" element={<Login />} />
               <Route path="pos" element={<POS />} />
               <Route path="admin" element={<AdminDashboard />} />
               <Route path="manager" element={<ManagerDashboard />} />
@@ -37,11 +36,3 @@ ReactDOM.createRoot(rootElement).render(
     </Provider>
   </React.StrictMode>
 );
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('SW Registered', reg))
-      .catch(err => console.log('SW Reg failed', err));
-  });
-}

@@ -1,0 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-main: #ffffff;
+    --bg-card: #f9fafb;
+    --bg-sidebar: #f3f4f6;
+    --text-main: #111827;
+    --text-muted: #6b7280;
+    --border-main: #e5e7eb;
+    --accent: #111827;
+    --accent-foreground: #ffffff;
+    --input-bg: #ffffff;
+  }
+
+  .dark {
+    --bg-main: #09090b;
+    --bg-card: #18181b;
+    --bg-sidebar: #0c0c0e;
+    --text-main: #f4f4f5;
+    --text-muted: #a1a1aa;
+    --border-main: #27272a;
+    --accent: #ffffff;
+    --accent-foreground: #09090b;
+    --input-bg: #09090b;
+  }
+
+  body {
+    @apply antialiased;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+@layer components {
+  .input-field {
+    @apply w-full rounded-md px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-600 transition-all;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-main);
+    color: var(--text-main);
+  }
+  .btn-primary {
+    @apply font-medium rounded-md px-6 py-2.5 transition-all text-sm;
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+  }
+  .btn-primary:hover {
+    opacity: 0.9;
+  }
+  .card {
+    @apply rounded-lg p-6 shadow-sm;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-main);
+  }
+}
+
+/* Print Styles */
+@media print {
+  /* Hide everything except the receipt */
+  body * {
+    visibility: hidden;
+  }
+  #receipt-content, #receipt-content * {
+    visibility: visible;
+  }
+  #receipt-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: white !important;
+    color: black !important;
+  }
+  /* Remove any backdrop/modal background */
+  .fixed {
+    position: static !important;
+    background: none !important;
+    backdrop-filter: none !important;
+  }
+  /* Ensure clean page breaks */
+  @page {
+    margin: 1cm;
+  }
+}

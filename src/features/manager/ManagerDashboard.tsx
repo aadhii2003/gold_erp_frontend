@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../app/store';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../../context/ThemeContext';
 import { 
     LayoutDashboard, 
     Users, 
@@ -10,17 +11,23 @@ import {
     LogOut,
     Plus,
     Monitor,
-    Search,
     ChevronRight,
     TrendingUp,
     Wallet,
     Trash2,
     ShieldCheck,
-    ShieldAlert
+    ShieldAlert,
+    Command,
+    Activity,
+    UserPlus,
+    History,
+    X,
+    FileDown
 } from 'lucide-react';
 
 const ManagerDashboard = () => {
     const { token, user } = useSelector((state: RootState) => state.auth);
+    const { theme } = useTheme();
     const navigate = useNavigate();
 
     const [activeTab, setActiveTab] = useState('dashboard');
@@ -39,6 +46,7 @@ const ManagerDashboard = () => {
     const [ratePerGram, setRatePerGram] = useState<number | ''>('');
     const [grams, setGrams] = useState<number | ''>('');
     const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedSale, setSelectedSale] = useState<any>(null);
 
     useEffect(() => {
         if (!user || user.role === 'STAFF') {
@@ -88,12 +96,12 @@ const ManagerDashboard = () => {
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            alert('Staff Authorization Issued.');
+            alert('Staff account created successfully.');
             setNewUsername('');
             setNewEmail('');
             setNewPassword('');
             fetchStaff();
-        } catch(e) { alert('Authorization failed.'); }
+        } catch(e) { alert('Account creation failed.'); }
     };
 
     const expenseTotal = (ratePerGram !== '' && grams !== '') ? Number(ratePerGram) * Number(grams) : 0;
@@ -114,8 +122,8 @@ const ManagerDashboard = () => {
             setRatePerGram('');
             setGrams('');
             fetchExpenses();
-            alert('Gold procurement expense recorded.');
-        } catch (e) { alert('Failed to record expense. Please ensure all fields are filled correctly.'); }
+            alert('Expense added successfully.');
+        } catch (e) { alert('Failed to record expense.'); }
     };
 
     const toggleUserStatus = async (id: number) => {
@@ -124,221 +132,149 @@ const ManagerDashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchStaff();
-        } catch (e) { alert('Access update failed.'); }
+            alert('Status updated.');
+        } catch (e) { alert('Status update failed.'); }
     };
 
     const deleteUser = async (id: number) => {
-        if (!window.confirm('Permanently decommission this terminal? All associated history remains archived.')) return;
+        if (!window.confirm('Permanently delete this staff account?')) return;
         try {
-            await axios.delete(`http://127.0.0.1:8000/api/users/${id}/delete/`, {
+            const res = await axios.delete(`http://127.0.0.1:8000/api/users/${id}/delete/`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchStaff();
-        } catch (e) { alert('Decommissioning failed.'); }
+            alert(res.data.message || 'Staff permanently deleted.');
+        } catch (e) { alert('Deletion failed.'); }
     };
 
     const SidebarItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
-        <button 
+        <button
             onClick={() => setActiveTab(id)}
-            className={`w-full flex items-center gap-3 px-6 py-3.5 transition-colors ${
-                activeTab === id 
-                ? 'bg-[var(--accent)] text-[var(--accent-foreground)]' 
-                : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-main)]'
-            }`}
+            className={`w-full flex items-center gap-3 px-6 py-4 transition-all relative group ${activeTab === id
+                ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-lg shadow-[hsl(var(--primary)/0.2)] rounded-2xl scale-[1.02]'
+                : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.5)] rounded-2xl'
+                }`}
         >
             <Icon size={18} />
-            <span className="text-sm font-medium">{label}</span>
+            <span className="text-[11px] font-black uppercase tracking-widest">{label}</span>
         </button>
     );
 
     return (
-        <div className="flex h-[88vh] bg-[var(--bg-main)] font-sans overflow-hidden rounded-xl border border-[var(--border-main)] shadow-2xl">
+        <div className="flex h-screen bg-[hsl(var(--background))] font-sans overflow-hidden transition-all duration-300">
             {/* Sidebar */}
-            <aside className="w-64 border-r border-[var(--border-main)] flex flex-col bg-[var(--bg-sidebar)]">
-                <div className="p-6 border-b border-[var(--border-main)] mb-4">
-                    <h1 className="text-xl font-bold text-[var(--text-main)] tracking-tight">Manager Node</h1>
-                    <p className="text-xs text-[var(--text-muted)] mt-1 uppercase font-medium">{user?.branch_name || 'Assigned Branch'}</p>
+            <aside className="w-72 border-r border-[hsl(var(--border))] flex flex-col bg-[hsl(var(--card))] z-10 no-print">
+                <div className="h-24 flex items-center pt-4 px-6 border-b border-[hsl(var(--border))]">
+                    <div className="flex-1 h-14 flex items-center gap-3 px-4 border border-[hsl(var(--border))] rounded-2xl bg-[hsl(var(--muted)/0.3)] hover:bg-[hsl(var(--muted)/0.5)] transition-all">
+                        <div className="w-8 h-8 bg-[hsl(var(--primary))] rounded-xl flex items-center justify-center shadow-lg shadow-[hsl(var(--primary)/0.2)]">
+                            <Monitor className="text-[hsl(var(--primary-foreground))]" size={18} />
+                        </div>
+                        <div>
+                            <h1 className="font-black text-[10px] tracking-widest uppercase leading-none">Pure Branch</h1>
+                            <p className="text-[8px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] opacity-60 mt-1 leading-none">Local Controller</p>
+                        </div>
+                    </div>
                 </div>
 
-                <nav className="flex-1">
-                    <SidebarItem id="dashboard" label="Overview" icon={LayoutDashboard} />
-                    <SidebarItem id="ledger" label="Transaction Ledger" icon={ReceiptText} />
-                    <SidebarItem id="expenses" label="Branch Expenses" icon={Wallet} />
-                    <SidebarItem id="terminals" label="Terminal Management" icon={Monitor} />
+                <nav className="flex-1 overflow-y-auto px-4 py-8 space-y-2">
+                    <SidebarItem id="dashboard" label="Performance" icon={LayoutDashboard} />
+                    <SidebarItem id="ledger" label="Sales Ledger" icon={ReceiptText} />
+                    <SidebarItem id="terminals" label="Staff Mgmt" icon={Users} />
+                    <SidebarItem id="expenses" label="Expenses" icon={Wallet} />
                 </nav>
 
-                <div className="p-6 border-t border-[var(--border-main)]">
-                    <button 
-                        onClick={() => navigate('/login')}
-                        className="w-full flex items-center gap-3 text-[var(--text-muted)] hover:text-red-400 transition-colors py-2 text-sm font-medium"
+                <div className="p-8 border-t border-[hsl(var(--border))]">
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="w-10 h-10 rounded-2xl bg-[hsl(var(--muted))] flex items-center justify-center overflow-hidden border border-[hsl(var(--border))]">
+                            <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`} alt="avatar" />
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                            <p className="text-xs font-black uppercase truncate tracking-tight">{user?.username}</p>
+                            <p className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">Branch Manager</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
+                            window.location.href = '/';
+                        }}
+                        className="w-full flex items-center justify-between p-4 bg-[hsl(var(--muted))] rounded-2xl text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.1)] transition-all"
                     >
+                        <span className="text-[10px] font-black uppercase tracking-widest">Terminate Session</span>
                         <LogOut size={16} />
-                        Logout
                     </button>
                 </div>
             </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 overflow-y-auto p-8">
-                {/* Header */}
-                <div className="mb-10 flex justify-between items-center">
-                    <div>
-                        <h2 className="text-2xl font-semibold text-[var(--text-main)] capitalize">
-                            {activeTab}
-                        </h2>
-                        <p className="text-sm text-[var(--text-muted)] mt-1">Operational Control Center</p>
-                    </div>
-                </div>
-
-                {/* Dashboard / Overview */}
-                {activeTab === 'dashboard' && (
-                    <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="card p-6">
-                                <TrendingUp className="text-emerald-400 mb-4" size={24} />
-                                <p className="text-2xl font-semibold text-[var(--text-main)]">${sales.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}</p>
-                                <p className="text-sm text-[var(--text-muted)] mt-1">Branch Revenue</p>
-                            </div>
-                            <div className="card p-6">
-                                <ReceiptText className="text-blue-400 mb-4" size={24} />
-                                <p className="text-2xl font-semibold text-[var(--text-main)]">{sales.length}</p>
-                                <p className="text-sm text-[var(--text-muted)] mt-1">Daily Transactions</p>
-                            </div>
-                            <div className="card p-6">
-                                <Users className="text-purple-400 mb-4" size={24} />
-                                <p className="text-2xl font-semibold text-[var(--text-main)]">{staffList.filter(s => s.role === 'STAFF').length}</p>
-                                <p className="text-sm text-[var(--text-muted)] mt-1">Active Staff</p>
-                            </div>
+            {/* Main Content Area */}
+            <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+                <header className="h-24 pt-4 bg-[hsl(var(--card))] border-b border-[hsl(var(--border))] sticky top-0 z-40 px-8 flex items-center justify-between no-print">
+                    <div className="flex items-center gap-6">
+                        <div className="px-6 h-14 flex items-center border border-[hsl(var(--border))] rounded-2xl bg-[hsl(var(--muted)/0.3)]">
+                            <h2 className="text-lg font-black uppercase tracking-tighter text-[hsl(var(--foreground))]">
+                                Local Terminal Monitor
+                            </h2>
                         </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                        <div className="text-right mr-6 border-r border-[hsl(var(--border))] pr-6">
+                            <p className="text-[9px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest">Active Branch</p>
+                            <p className="text-sm font-black uppercase">{(user as any)?.branch_name || 'Assigned Branch'}</p>
+                        </div>
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-60">System Synchronized</span>
+                    </div>
+                </header>
 
-                        <div className="card">
-                            <h3 className="text-lg font-medium text-[var(--text-main)] mb-6">Recent Activity</h3>
-                            <div className="space-y-4">
-                                {sales.slice(0, 5).map(s => (
-                                    <div key={s.id} className="flex justify-between items-center bg-[var(--bg-main)] p-4 rounded border border-[var(--border-main)]">
-                                        <div>
-                                            <p className="text-sm font-medium text-[var(--text-main)]">{s.product_name}</p>
-                                            <p className="text-xs text-[var(--text-muted)]">{new Date(s.created_at).toLocaleTimeString()}</p>
+                <div className="flex-1 overflow-y-auto p-8 bg-[var(--bg-sidebar)]/30">
+                    {/* Dashboard Tab */}
+                    {activeTab === 'dashboard' && (
+                        <div className="space-y-8 animate-in fade-in duration-500">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                {[
+                                    { label: 'Branch Revenue', value: `$${sales.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}`, icon: TrendingUp, color: 'text-emerald-500' },
+                                    { label: 'Transactions', value: sales.length, icon: ReceiptText, color: 'text-blue-500' },
+                                    { label: 'Active Terminals', value: staffList.filter(s => s.role === 'STAFF').length, icon: Monitor, color: 'text-purple-500' },
+                                ].map((stat, i) => (
+                                    <div key={i} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-8 rounded-[2rem] shadow-sm hover:shadow-md transition-all group">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-[0.2em]">{stat.label}</p>
+                                            <div className={`p-3 rounded-2xl bg-[hsl(var(--muted))] ${stat.color} group-hover:scale-110 transition-all`}>
+                                                <stat.icon size={20} />
+                                            </div>
                                         </div>
-                                        <p className="text-sm font-bold text-emerald-400">+${Number(s.subtotal).toLocaleString()}</p>
+                                        <p className="text-3xl font-black text-[hsl(var(--foreground))] tracking-tighter">{stat.value}</p>
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    </div>
-                )}
 
-                {/* Ledger Tab */}
-                {activeTab === 'ledger' && (
-                    <div className="animate-in fade-in duration-300">
-                        <div className="card p-0 overflow-hidden">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="border-b border-[var(--border-main)] text-[var(--text-muted)] text-xs font-medium bg-[var(--bg-sidebar)]">
-                                        <th className="p-4">Time</th>
-                                        <th className="p-4">Terminal</th>
-                                        <th className="p-4">Material Details</th>
-                                        <th className="p-4">Specs</th>
-                                        <th className="p-4 text-right">Settlement</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="text-sm">
-                                    {sales.map(sale => (
-                                        <tr key={sale.id} className="border-b border-[var(--border-main)] hover:bg-[var(--bg-sidebar)] transition-colors">
-                                            <td className="p-4 text-[var(--text-muted)]">{new Date(sale.created_at).toLocaleTimeString()}</td>
-                                            <td className="p-4 text-[var(--text-main)] font-medium">{sale.staff_name}</td>
-                                            <td className="p-4">
-                                                <p className="text-[var(--text-main)]">{sale.product_name}</p>
-                                                <p className="text-xs text-[var(--text-muted)]">{sale.quantity_grams}g</p>
-                                            </td>
-                                            <td className="p-4 text-[var(--text-muted)]">{sale.actual_product_quality}% Purity</td>
-                                            <td className="p-4 text-right">
-                                                <p className="text-[var(--text-main)] font-semibold">${Number(sale.subtotal).toLocaleString()}</p>
-                                                <p className="text-xs text-[var(--text-muted)]">{Number(sale.total_ugx).toLocaleString()} UGX</p>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* Branch Expenses */}
-                {activeTab === 'expenses' && (
-                    <div className="animate-in fade-in duration-300 space-y-8">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            <div className="md:col-span-1 space-y-6">
-                                <div className="card space-y-4">
-                                    <h3 className="text-lg font-medium text-white mb-2">Record Procurement</h3>
-                                    <div className="space-y-1">
-                                        <label className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Gold Source Name</label>
-                                        <input 
-                                            type="text" 
-                                            value={sourceName} 
-                                            onChange={e => setSourceName(e.target.value)} 
-                                            className="input-field" 
-                                            placeholder="e.g. Local Miner / Supplier"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Rate / Gram</label>
-                                            <input 
-                                                type="number" 
-                                                value={ratePerGram} 
-                                                onChange={e => setRatePerGram(e.target.value ? Number(e.target.value) : '')} 
-                                                className="input-field font-semibold text-white" 
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Weight (Grams)</label>
-                                            <input 
-                                                type="number" 
-                                                value={grams} 
-                                                onChange={e => setGrams(e.target.value ? Number(e.target.value) : '')} 
-                                                className="input-field font-semibold text-white" 
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Date</label>
-                                        <input 
-                                            type="date" 
-                                            value={expenseDate} 
-                                            onChange={e => setExpenseDate(e.target.value)} 
-                                            className="input-field" 
-                                        />
-                                    </div>
-                                    <div className="p-4 bg-zinc-900 rounded-xl border border-zinc-800 mt-4">
-                                        <p className="text-xs text-zinc-500 uppercase font-bold">Automatic Calculation</p>
-                                        <p className="text-2xl font-bold text-white mt-1">${expenseTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-                                    </div>
-                                    <button onClick={createExpense} className="btn-primary w-full py-3.5 mt-2">
-                                        Record Expense
-                                    </button>
+                            <div className="erp-section">
+                                <div className="erp-section-header">
+                                    <h3 className="erp-section-title flex items-center gap-2">
+                                        <Activity size={14} /> Recent Terminal Activity
+                                    </h3>
                                 </div>
-                            </div>
-
-                            <div className="md:col-span-2">
-                                <h3 className="text-lg font-medium text-white mb-6">Branch Procurement Ledger</h3>
-                                <div className="card p-0 overflow-hidden">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="border-b border-zinc-800 text-zinc-500 text-xs font-medium bg-zinc-900/50">
-                                                <th className="p-4">Date</th>
-                                                <th className="p-4">Source</th>
-                                                <th className="p-4">Specs</th>
-                                                <th className="p-4 text-right">Total Cost</th>
+                                <div className="erp-section-content !p-0">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-[hsl(var(--muted))] text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border-b border-[hsl(var(--border))]">
+                                            <tr>
+                                                <th className="p-6">Time</th>
+                                                <th className="p-6">Authorized Staff</th>
+                                                <th className="p-6">Product</th>
+                                                <th className="p-6 text-right">Actions</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="text-sm">
-                                            {expenses.map(exp => (
-                                                <tr key={exp.id} className="border-b border-zinc-900">
-                                                    <td className="p-4 text-zinc-500">{exp.date}</td>
-                                                    <td className="p-4 text-white font-medium">{exp.source_name}</td>
-                                                    <td className="p-4 text-zinc-400">{exp.grams}g @ ${exp.rate_per_gram}</td>
-                                                    <td className="p-4 text-right font-semibold text-white">${Number(exp.total).toLocaleString()}</td>
+                                        <tbody className="divide-y divide-[hsl(var(--border))]">
+                                            {sales.slice(0, 8).map(s => (
+                                                <tr key={s.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors">
+                                                    <td className="p-6 font-mono text-xs text-[hsl(var(--muted-foreground))]">{new Date(s.created_at).toLocaleTimeString()}</td>
+                                                    <td className="p-6 font-black uppercase text-[11px]">{s.staff_name}</td>
+                                                    <td className="p-6 text-sm font-bold">{s.product_name}</td>
+                                                    <td className="p-6 text-right">
+                                                        <button onClick={() => setSelectedSale(s)} className="text-[10px] font-black uppercase tracking-widest text-[var(--gold-primary)] hover:underline">View Bill</button>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -346,42 +282,298 @@ const ManagerDashboard = () => {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* Terminals Tab */}
-                {activeTab === 'terminals' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
-                        <div className="lg:col-span-2 space-y-4">
-                            {staffList.filter(s => s.role === 'STAFF').map(s => (
-                                <div key={s.id} className="card flex justify-between items-center">
-                                    <div className="flex items-center gap-4">
-                                        <Monitor className="text-[var(--text-muted)]" size={24} />
-                                        <div>
-                                            <p className="text-[var(--text-main)] font-semibold">{s.username}</p>
-                                            <p className="text-xs text-[var(--text-muted)]">Active Node</p>
-                                        </div>
-                                    </div>
-                                    <ChevronRight className="text-[var(--text-muted)] opacity-50" size={18} />
+                    {/* Sales Logs Tab */}
+                    {activeTab === 'ledger' && (
+                        <div className="erp-section">
+                            <div className="erp-section-header">
+                                <h3 className="erp-section-title">Branch Sales History</h3>
+                            </div>
+                                <div className="erp-section-content !p-0">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-[hsl(var(--muted))] text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border-b border-[hsl(var(--border))]">
+                                            <tr>
+                                                <th className="p-6">Timestamp</th>
+                                                <th className="p-6">Staff</th>
+                                                <th className="p-6">Product Intelligence</th>
+                                                <th className="p-6">Quality Matrix</th>
+                                                <th className="p-6 text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-[hsl(var(--border))]">
+                                            {sales.map(sale => (
+                                                <tr key={sale.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors">
+                                                    <td className="p-6 font-mono text-xs text-[hsl(var(--muted-foreground))]">{new Date(sale.created_at).toLocaleString()}</td>
+                                                    <td className="p-6 font-black uppercase text-[11px]">{sale.staff_name}</td>
+                                                    <td className="p-6">
+                                                        <span className="font-bold text-sm">{sale.product_name}</span>
+                                                        <p className="text-[10px] text-[hsl(var(--muted-foreground))] font-black uppercase tracking-widest mt-1">{sale.vendor || 'Spot Market'}</p>
+                                                    </td>
+                                                    <td className="p-6">
+                                                        <span className="font-black text-sm text-emerald-500">{sale.actual_product_quality}%</span>
+                                                        <p className="text-[10px] text-[hsl(var(--muted-foreground))] font-bold mt-1">{sale.actual_process_weight}g Processed</p>
+                                                    </td>
+                                                    <td className="p-6 text-right">
+                                                        <button onClick={() => setSelectedSale(sale)} className="text-[10px] font-black uppercase tracking-widest text-[var(--gold-primary)] hover:underline">View Bill</button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
-                            ))}
                         </div>
+                    )}
 
-                        <div className="card h-fit">
-                            <h3 className="text-[var(--text-main)] font-medium mb-6 flex items-center gap-2"><Plus size={18} /> Authorize Terminal</h3>
-                            <div className="space-y-4">
-                                <input type="text" placeholder="Username" value={newUsername} onChange={e => setNewUsername(e.target.value)} className="input-field" />
-                                <input type="email" placeholder="Email (Optional)" value={newEmail} onChange={e => setNewEmail(e.target.value)} className="input-field" />
-                                <input type="password" placeholder="Access Passkey" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="input-field" />
-                                <button onClick={createStaff} className="btn-primary w-full mt-2">Provision Node</button>
+                    {/* Procurement Tab */}
+                    {activeTab === 'expenses' && (
+                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-in fade-in duration-500">
+                            <div className="xl:col-span-2 erp-section">
+                                <div className="erp-section-header">
+                                    <h3 className="erp-section-title">Procurement Ledger</h3>
+                                </div>
+                                <div className="erp-section-content !p-0">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-[hsl(var(--muted))] text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border-b border-[hsl(var(--border))]">
+                                            <tr>
+                                                <th className="p-6">Date</th>
+                                                <th className="p-6">Source</th>
+                                                <th className="p-6">Weight Data</th>
+                                                <th className="p-6 text-right">Settlement</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-[hsl(var(--border))]">
+                                            {expenses.map(exp => (
+                                                <tr key={exp.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors">
+                                                    <td className="p-6 font-mono text-xs">{exp.date}</td>
+                                                    <td className="p-6 font-black uppercase text-[11px]">{exp.source_name}</td>
+                                                    <td className="p-6 text-xs text-[hsl(var(--muted-foreground))] font-bold">{exp.grams}g @ <span className="text-[hsl(var(--foreground))]">${exp.rate_per_gram}/g</span></td>
+                                                    <td className="p-6 text-right font-black text-red-500">-${Number(exp.total).toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div className="erp-section h-fit">
+                                <div className="erp-section-header">
+                                    <h3 className="erp-section-title">Record Procurement</h3>
+                                </div>
+                                <div className="erp-section-content">
+                                    <div className="space-y-4">
+                                        <div className="erp-input-group">
+                                            <label className="erp-label">Posting Date</label>
+                                            <input type="date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} className="erp-input" />
+                                        </div>
+                                        <div className="erp-input-group">
+                                            <label className="erp-label">Source Identity</label>
+                                            <input type="text" placeholder="e.g. Local Supplier" value={sourceName} onChange={e => setSourceName(e.target.value)} className="erp-input" />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="erp-input-group">
+                                                <label className="erp-label">Rate (USD/g)</label>
+                                                <input type="number" placeholder="0.00" value={ratePerGram} onChange={e => setRatePerGram(Number(e.target.value))} className="erp-input" />
+                                            </div>
+                                            <div className="erp-input-group">
+                                                <label className="erp-label">Volume (g)</label>
+                                                <input type="number" placeholder="0.00" value={grams} onChange={e => setGrams(Number(e.target.value))} className="erp-input" />
+                                            </div>
+                                        </div>
+                                        <div className="p-6 bg-[hsl(var(--muted))] rounded-2xl border border-[hsl(var(--border))] text-center">
+                                            <p className="text-[9px] text-[hsl(var(--muted-foreground))] font-black uppercase tracking-[0.2em] mb-2">Calculated Settlement</p>
+                                            <p className="text-3xl font-black text-[hsl(var(--foreground))] tracking-tighter">${expenseTotal.toLocaleString()}</p>
+                                        </div>
+                                        <button onClick={createExpense} className="erp-button-primary w-full">Commit to Ledger</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
+
+                    {/* Terminals Tab */}
+                    {activeTab === 'terminals' && (
+                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-in fade-in duration-300">
+                            <div className="xl:col-span-2 space-y-6">
+                                <div className="erp-section">
+                                    <div className="erp-section-header">
+                                        <h3 className="erp-section-title">Authorized Terminals</h3>
+                                        <span className="text-[9px] bg-emerald-500/10 text-emerald-500 px-3 py-1 rounded-full border border-emerald-500/20 font-black uppercase tracking-widest">
+                                            {staffList.filter(s => s.role === 'STAFF').length} Online
+                                        </span>
+                                    </div>
+                                <div className="erp-section-content !p-0">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-[hsl(var(--muted))] text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border-b border-[hsl(var(--border))]">
+                                            <tr>
+                                                <th className="p-6">Terminal Node</th>
+                                                <th className="p-6">Authorization</th>
+                                                <th className="p-6 text-right">Operations</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-[hsl(var(--border))]">
+                                            {staffList.filter(s => s.role === 'STAFF').map(staff => (
+                                                <tr key={staff.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors group">
+                                                    <td className="p-6">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-10 h-10 rounded-2xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))] flex items-center justify-center text-xs font-black uppercase">
+                                                                {staff.username.substring(0,2)}
+                                                            </div>
+                                                            <span className="font-black uppercase text-sm tracking-tight">{staff.username}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-6">
+                                                        <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${staff.is_active ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' : 'text-red-500 bg-red-500/10 border-red-500/20'}`}>
+                                                            {staff.is_active ? 'Authorized' : 'Suspended'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-6 text-right">
+                                                        <div className="flex items-center justify-end gap-4">
+                                                            <button onClick={() => toggleUserStatus(staff.id)} className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--primary))] hover:underline">
+                                                                {staff.is_active ? 'Revoke Access' : 'Restore Access'}
+                                                            </button>
+                                                            <button onClick={() => deleteUser(staff.id)} className="p-3 bg-[hsl(var(--muted))] rounded-xl text-[hsl(var(--muted-foreground))] hover:text-red-500 transition-all">
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                </div>
+                            </div>
+
+                            <div className="erp-section h-fit">
+                                <div className="erp-section-header">
+                                    <h3 className="erp-section-title flex items-center gap-2"><UserPlus size={14} /> Provision Terminal</h3>
+                                </div>
+                                <div className="erp-section-content">
+                                    <div className="space-y-4">
+                                        <div className="erp-input-group">
+                                            <label className="erp-label">Staff Identity</label>
+                                            <input type="text" placeholder="e.g. staff_node_01" value={newUsername} onChange={e => setNewUsername(e.target.value)} className="erp-input" />
+                                        </div>
+                                        <div className="erp-input-group">
+                                            <label className="erp-label">Access Email</label>
+                                            <input type="email" placeholder="staff@branch.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} className="erp-input" />
+                                        </div>
+                                            <div className="erp-input-group">
+                                                <label className="erp-label">Access Primary Credentials</label>
+                                                <input type="password" placeholder="••••••••" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="erp-input" />
+                                            </div>
+                                            <button onClick={createStaff} className="erp-button-primary w-full">Deploy Terminal Node</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </main>
+
+            {/* Sale Bill Overlay */}
+            {selectedSale && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+                    <div className="bg-[hsl(var(--card))] w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-[hsl(var(--border))] overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-8 border-b border-[hsl(var(--border))] flex justify-between items-center bg-[hsl(var(--muted)/0.3)]">
+                            <div>
+                                <h2 className="text-xl font-black uppercase tracking-tight">Transaction Bill</h2>
+                                <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mt-1">Ref: {selectedSale.id}</p>
+                            </div>
+                            <button onClick={() => setSelectedSale(null)} className="p-3 bg-white dark:bg-zinc-900 border border-[hsl(var(--border))] rounded-2xl hover:bg-red-500 hover:text-white transition-all">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-10 space-y-10">
+                            {/* Bill Header */}
+                            <div className="grid grid-cols-2 gap-8 pb-8 border-b border-dashed border-[hsl(var(--border))]">
+                                <div>
+                                    <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-2">Entity Origin</p>
+                                    <p className="text-sm font-black uppercase">{selectedSale.branch_name || (user as any)?.branch_name}</p>
+                                    <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] mt-1">{new Date(selectedSale.created_at).toLocaleString()}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-2">Vendor / Source</p>
+                                    <p className="text-sm font-black uppercase">{selectedSale.vendor}</p>
+                                    <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] mt-1">Method: {selectedSale.purchase_method}</p>
+                                </div>
+                            </div>
+
+                            {/* Financial Breakdown */}
+                            <div className="space-y-6">
+                                <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))] border-l-4 border-[var(--gold-primary)] pl-3">Financial Settlement</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="bg-[hsl(var(--muted)/0.3)] p-6 rounded-3xl border border-[hsl(var(--border))]">
+                                        <p className="text-[9px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">Market Rate</p>
+                                        <p className="text-lg font-black">${Number(selectedSale.market_price).toLocaleString()}<span className="text-[10px] ml-1">/g</span></p>
+                                    </div>
+                                    <div className="bg-[hsl(var(--muted)/0.3)] p-6 rounded-3xl border border-[hsl(var(--border))]">
+                                        <p className="text-[9px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">X-Factor</p>
+                                        <p className="text-lg font-black">{selectedSale.x_factor}%</p>
+                                    </div>
+                                    <div className="bg-[hsl(var(--muted)/0.3)] p-6 rounded-3xl border border-[hsl(var(--border))]">
+                                        <p className="text-[9px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">Forex Rate</p>
+                                        <p className="text-lg font-black">{Number(selectedSale.currency_rate).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Product Details */}
+                            <div className="space-y-4">
+                                <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))] border-l-4 border-[var(--gold-primary)] pl-3">Product Specifications</h4>
+                                <div className="erp-section !p-0 overflow-hidden">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-[hsl(var(--muted))] border-b border-[hsl(var(--border))]">
+                                            <tr>
+                                                <th className="p-4 text-[9px] font-black uppercase tracking-widest">Description</th>
+                                                <th className="p-4 text-[9px] font-black uppercase tracking-widest">Weight</th>
+                                                <th className="p-4 text-[9px] font-black uppercase tracking-widest">Purity</th>
+                                                <th className="p-4 text-right text-[9px] font-black uppercase tracking-widest">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr className="border-b border-[hsl(var(--border))] last:border-0">
+                                                <td className="p-4">
+                                                    <p className="text-sm font-black uppercase">{selectedSale.product_name}</p>
+                                                    <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{selectedSale.description || 'Standard Gold Settlement'}</p>
+                                                </td>
+                                                <td className="p-4 font-mono text-sm font-bold">{selectedSale.actual_process_weight}g</td>
+                                                <td className="p-4 font-mono text-sm font-bold text-emerald-600">{selectedSale.actual_product_quality}%</td>
+                                                <td className="p-4 text-right font-black text-sm">${Number(selectedSale.paid_amount).toLocaleString()}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Grand Totals */}
+                            <div className="bg-black text-white p-8 rounded-[2rem] flex justify-between items-center shadow-xl">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">Total Local Settlement</p>
+                                    <p className="text-2xl font-black">{Number(selectedSale.total_ugx).toLocaleString()} <span className="text-sm opacity-60">UGX</span></p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">USD Equiv</p>
+                                    <p className="text-2xl font-black text-[var(--gold-primary)]">${Number(selectedSale.paid_amount).toLocaleString()}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-8 bg-[hsl(var(--muted)/0.3)] border-t border-[hsl(var(--border))] flex gap-4 no-print">
+                            <button onClick={() => window.print()} className="flex-1 py-4 bg-white dark:bg-zinc-900 border border-[hsl(var(--border))] text-black dark:text-white font-black rounded-2xl hover:bg-[hsl(var(--muted))] transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2">
+                                <X size={16} className="rotate-45" /> Export Receipt
+                            </button>
+                            <button onClick={() => setSelectedSale(null)} className="flex-1 py-4 bg-black text-white font-black rounded-2xl hover:bg-zinc-800 transition-all uppercase tracking-widest text-xs">
+                                Close Terminal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
 export default ManagerDashboard;
-

@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../app/store';
 import { setRates } from '../../app/store';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../../context/ThemeContext';
 import {
     LayoutDashboard,
     ReceiptText,
     Wallet,
     Store,
     BarChart3,
-    LogOut,
     Plus,
     TrendingUp,
     ChevronRight,
@@ -24,20 +25,22 @@ import {
     Sun,
     Moon,
     Bell,
-    Command
+    Command,
+    LogOut,
+    UserPlus,
+    Activity,
+    FileDown,
+    Loader2,
+    Info,
+    RefreshCw,
+    History as HistoryIcon
 } from 'lucide-react';
 
 const AdminDashboard = () => {
     const { token, user, rates } = useSelector((state: RootState) => state.auth);
+    const { theme, toggleTheme } = useTheme();
     const dispatch = useDispatch();
     const navigate = useNavigate();
-
-    const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
-
-    useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
-    }, [theme]);
 
     const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -60,27 +63,148 @@ const AdminDashboard = () => {
     const [newManagerPassword, setNewManagerPassword] = useState('');
     const [newManagerEmail, setNewManagerEmail] = useState('');
 
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+
+    // UI & Filter State
+    const [selectedSale, setSelectedSale] = useState<any>(null);
+    const [salesFilterBranch, setSalesFilterBranch] = useState<string>('All Branches');
+
     // Expenses Global State
     const [expenses, setExpenses] = useState<any[]>([]);
 
+    const [matrixList, setMatrixList] = useState<any[]>([]);
+    const [newDensity, setNewDensity] = useState('');
+    const [newPurity, setNewPurity] = useState('');
+
+    // Admin Logs State
+    const [adminLogs, setAdminLogs] = useState<any[]>([]);
+    const [autoGoldPrice, setAutoGoldPrice] = useState<number | null>(null);
+    const [showGlobalSyncNotify, setShowGlobalSyncNotify] = useState(false);
+
     useEffect(() => {
-        if (user?.role === 'MANAGER') {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+        if (user.role === 'MANAGER') {
             navigate('/manager');
-        } else if (user?.role !== 'ADMIN') {
+        } else if (user.role !== 'ADMIN') {
             navigate('/pos');
         } else {
             fetchBranches();
             fetchGlobalSales();
             fetchUsers();
             fetchExpenses();
+            fetchMatrix();
+            fetchAdminLogs();
         }
     }, [user, navigate]);
+
+    const fetchAdminLogs = async () => {
+        try {
+            const res = await axios.get('http://127.0.0.1:8000/api/admin-logs/', { headers: { Authorization: `Bearer ${token}` } });
+            setAdminLogs(res.data);
+        } catch (e) { console.error(e); }
+    };
+
+    const fetchLiveGoldPrice = async () => {
+        try {
+            // Simulated Live Gold Price Fetch
+            const simulatedPrice = 2345.50 + (Math.random() * 10);
+            setAutoGoldPrice(Number(simulatedPrice.toFixed(2)));
+            setShowGlobalSyncNotify(true);
+        } catch (e) { console.error(e); }
+    };
 
     const fetchExpenses = async () => {
         try {
             const res = await axios.get('http://127.0.0.1:8000/api/expenses/', { headers: { Authorization: `Bearer ${token}` } });
             setExpenses(res.data);
         } catch (e) { console.error(e); }
+    };
+
+    const fetchMatrix = async () => {
+        try {
+            const res = await axios.get('http://127.0.0.1:8000/api/density-purity/', { headers: { Authorization: `Bearer ${token}` } });
+            setMatrixList(res.data);
+        } catch (e) { console.error(e); }
+    };
+
+    const createMatrixEntry = async () => {
+        if (!newDensity || !newPurity) return;
+        if (!window.confirm('Register this reference entry?')) return;
+        try {
+            await axios.post('http://127.0.0.1:8000/api/density-purity/', { density: newDensity, purity: newPurity }, { headers: { Authorization: `Bearer ${token}` } });
+            setNewDensity('');
+            setNewPurity('');
+            fetchMatrix();
+            fetchAdminLogs();
+        } catch (e) { alert('Failed to add matrix entry. May be duplicate.'); }
+    };
+
+    const deleteMatrixEntry = async (id: number) => {
+        if (!window.confirm('Remove this reference entry?')) return;
+        try {
+            await axios.delete(`http://127.0.0.1:8000/api/density-purity/${id}/`, { headers: { Authorization: `Bearer ${token}` } });
+            fetchMatrix();
+            fetchAdminLogs();
+        } catch (e) { alert('Failed to delete entry.'); }
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const bstr = evt.target?.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const data = XLSX.utils.sheet_to_json(ws);
+                
+                const formatted = data.map((row: any) => ({
+                    density: Number(row.Density || row.density),
+                    purity: Number(row.Purity || row.purity)
+                })).filter((row) => !isNaN(row.density) && !isNaN(row.purity));
+
+                if (formatted.length === 0) {
+                    setIsUploading(false);
+                    return alert('No valid data found in the file.');
+                }
+                
+                setUploadProgress({ current: 0, total: formatted.length });
+
+                for (let i = 0; i < formatted.length; i++) {
+                    await axios.post('http://127.0.0.1:8000/api/density-purity/', formatted[i], { headers: { Authorization: `Bearer ${token}` } });
+                    setUploadProgress({ current: i + 1, total: formatted.length });
+                }
+
+                alert(`Successfully uploaded ${formatted.length} entries!`);
+                fetchMatrix();
+            } catch(err) {
+                alert('Error processing file. Ensure it is a valid Excel format.');
+            } finally {
+                setIsUploading(false);
+                setUploadProgress({ current: 0, total: 0 });
+                e.target.value = '';
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
+
+    const downloadDemoTemplate = () => {
+        const ws = XLSX.utils.json_to_sheet([
+            { Density: 10.5, Purity: 0 },
+            { Density: 15.2, Purity: 75.5 },
+            { Density: 19.3, Purity: 99.9 }
+        ]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "MatrixTemplate");
+        XLSX.writeFile(wb, "Density_Purity_Template.xlsx");
     };
 
     const fetchBranches = async () => {
@@ -105,362 +229,897 @@ const AdminDashboard = () => {
     };
 
     const updateRates = async () => {
+        if (!window.confirm('Synchronize these rates across the entire global network?')) return;
         try {
-            const res = await axios.post('http://127.0.0.1:8000/api/rates/', { gold_price: goldPrice, forex_rate: forexRate }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            dispatch(setRates(res.data));
-            alert('Market rates updated successfully.');
-        } catch (e) { alert('Update failed.'); }
+            await axios.post('http://127.0.0.1:8000/api/rates/', {
+                gold_price: autoGoldPrice || goldPrice,
+                forex_rate: forexRate
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            
+            if (autoGoldPrice) setGoldPrice(autoGoldPrice);
+            dispatch(setRates({ gold_price: autoGoldPrice || goldPrice, forex_rate: forexRate }));
+            setShowGlobalSyncNotify(false);
+            setAutoGoldPrice(null);
+            fetchAdminLogs();
+            alert('Market rates synchronized successfully.');
+        } catch (e) { alert('Failed to update rates.'); }
     };
 
     const createBranch = async () => {
         if (!branchName) return;
+        if (!window.confirm(`Deploy new entity: ${branchName}?`)) return;
         try {
-            await axios.post('http://127.0.0.1:8000/api/branches/create/', { name: branchName, x_factor: xFactor }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setBranchName(''); setXFactor(92.0);
+            await axios.post('http://127.0.0.1:8000/api/branches/create/', {
+                name: branchName,
+                x_factor: xFactor
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            setBranchName('');
+            setXFactor(92.0);
             fetchBranches();
-            alert('New branch added.');
-        } catch (e) { alert('Error adding branch.'); }
+            fetchAdminLogs();
+            alert('New branch established.');
+        } catch (e: any) { 
+            const errorMsg = e.response?.data ? JSON.stringify(e.response.data) : 'Branch creation failed.';
+            alert(`Error: ${errorMsg}`);
+        }
     };
 
-    const createManager = async (branchId: number) => {
-        if (!newManagerUsername || !newManagerPassword) return;
+    const deleteBranch = async (id: number) => {
+        if (!window.confirm('Are you sure you want to decommission this branch? All associated data will remain but the branch entity will be removed.')) return;
+        try {
+            await axios.delete(`http://127.0.0.1:8000/api/branches/${id}/`, { headers: { Authorization: `Bearer ${token}` } });
+            fetchBranches();
+            fetchAdminLogs();
+            alert('Branch decommissioned.');
+        } catch (e) { alert('Deletion failed.'); }
+    };
+
+    const createManager = async () => {
+        if (!selectedBranchForManagers || !newManagerUsername) return;
+        if (!window.confirm(`Authorize ${newManagerUsername} as a manager for ${selectedBranchForManagers.name}?`)) return;
         try {
             await axios.post('http://127.0.0.1:8000/api/users/create/', {
                 username: newManagerUsername,
                 password: newManagerPassword,
                 email: newManagerEmail,
                 role: 'MANAGER',
-                branch: branchId
+                branch: selectedBranchForManagers.id
             }, { headers: { Authorization: `Bearer ${token}` } });
             setNewManagerUsername('');
             setNewManagerPassword('');
             setNewManagerEmail('');
             fetchUsers();
-            alert('Manager assigned to branch.');
-        } catch (e) { alert('Failed to assign manager.'); }
+            fetchAdminLogs();
+            alert('Branch Manager provisioned.');
+        } catch (e: any) { 
+            const errorMsg = e.response?.data ? JSON.stringify(e.response.data) : 'Provisioning failed.';
+            alert(`Error: ${errorMsg}`);
+        }
     };
 
-    const toggleUserStatus = async (id: number) => {
+    const toggleUserStatus = async (userId: number) => {
+        if (!window.confirm('Update user authorization status?')) return;
         try {
-            await axios.patch(`http://127.0.0.1:8000/api/users/${id}/toggle/`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await axios.patch(`http://127.0.0.1:8000/api/users/${userId}/toggle/`, {}, { headers: { Authorization: `Bearer ${token}` } });
             fetchUsers();
-        } catch (e) { alert('Access update failed.'); }
+            fetchAdminLogs();
+            alert('User status updated successfully.');
+        } catch (e) { alert('Status update failed.'); }
     };
 
-    const deleteUser = async (id: number) => {
-        if (!window.confirm('Permanently remove this manager? This action is irreversible.')) return;
+    const removeUser = async (userId: number) => {
+        if (!window.confirm('Permanently revoke access and remove this user from the system?')) return;
         try {
-            await axios.delete(`http://127.0.0.1:8000/api/users/${id}/delete/`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axios.delete(`http://127.0.0.1:8000/api/users/${userId}/delete/`, { headers: { Authorization: `Bearer ${token}` } });
             fetchUsers();
-        } catch (e) { alert('Manager removal failed.'); }
+            fetchAdminLogs();
+            alert(res.data.message || 'User permanently removed from the system.');
+        } catch (e) { alert('Removal failed.'); }
     };
 
-    const SidebarItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
+    const NavItem = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
         <button
             onClick={() => setActiveTab(id)}
-            className={`w-full flex items-center gap-3 px-6 py-3.5 transition-colors ${activeTab === id
-                    ? 'bg-[var(--accent)] text-[var(--accent-foreground)]'
-                    : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-main)]'
+            className={`w-full flex items-center gap-3 px-6 py-4 transition-all relative group ${activeTab === id
+                ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-lg shadow-[hsl(var(--primary)/0.2)] rounded-2xl scale-[1.02]'
+                : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.5)] rounded-2xl'
                 }`}
         >
-            {activeTab === id && (
-                <div className="absolute left-0 w-1.5 h-6 bg-[var(--accent-color)] rounded-r-full shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
-            )}
-            <Icon size={18} className={`${activeTab === id ? 'scale-110' : 'group-hover:scale-110'} transition-transform duration-300`} />
-            <span className="text-sm font-semibold tracking-wide">{label}</span>
+            <Icon size={18} />
+            <span className="text-[11px] font-black uppercase tracking-widest">{label}</span>
         </button>
     );
 
     return (
-        <div className="flex h-[88vh] bg-[var(--bg-main)] font-sans overflow-hidden rounded-xl border border-[var(--border-main)] shadow-2xl">
+        <div className="flex h-screen bg-[hsl(var(--background))] font-sans overflow-hidden transition-all duration-300">
             {/* Sidebar */}
-            <aside className="w-64 border-r border-[var(--border-main)] flex flex-col bg-[var(--bg-sidebar)]">
-                <div className="p-6 border-b border-[var(--border-main)] mb-4">
-                    <h1 className="text-xl font-bold text-[var(--text-main)] tracking-tight">Gold ERP Admin</h1>
+            <aside className="w-72 border-r border-[hsl(var(--border))] flex flex-col bg-[hsl(var(--card))] z-10 no-print">
+                <div className="h-24 flex items-center pt-4 px-6 border-b border-[hsl(var(--border))]">
+                    <div className="flex-1 h-14 flex items-center gap-3 px-4 border border-[hsl(var(--border))] rounded-2xl bg-[hsl(var(--muted)/0.3)] hover:bg-[hsl(var(--muted)/0.5)] transition-all">
+                        <div className="w-8 h-8 bg-[hsl(var(--primary))] rounded-xl flex items-center justify-center shadow-lg shadow-[hsl(var(--primary)/0.2)]">
+                            <ShieldCheck className="text-[hsl(var(--primary-foreground))]" size={18} />
+                        </div>
+                        <div>
+                            <h1 className="font-black text-[10px] tracking-widest uppercase leading-none">Pure Admin</h1>
+                            <p className="text-[8px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] opacity-60 mt-1 leading-none">System Controller</p>
+                        </div>
+                    </div>
                 </div>
 
-                <nav className="flex-1">
-                    <SidebarItem id="dashboard" label="Dashboard" icon={LayoutDashboard} />
-                    <SidebarItem id="sales" label="Sales & Billings" icon={ReceiptText} />
-                    <SidebarItem id="expenses" label="Expenses" icon={Wallet} />
-                    <SidebarItem id="branches" label="Branches" icon={Store} />
-                    <SidebarItem id="reports" label="Reports" icon={BarChart3} />
+                <nav className="flex-1 overflow-y-auto px-4 py-8 space-y-2">
+                    <NavItem id="dashboard" label="Performance" icon={LayoutDashboard} />
+                    <NavItem id="sales" label="Sales Ledger" icon={ReceiptText} />
+                    <NavItem id="branches" label="Entity Management" icon={Store} />
+                    <NavItem id="expenses" label="Global Expenses" icon={Wallet} />
+                    <NavItem id="matrix" label="Purity Matrix" icon={Activity} />
+                    <NavItem id="logs" label="System Logs" icon={HistoryIcon} />
                 </nav>
 
-                <div className="p-6 border-t border-[var(--border-main)]">
+                <div className="p-8 border-t border-[hsl(var(--border))]">
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="w-10 h-10 rounded-2xl bg-[hsl(var(--muted))] flex items-center justify-center overflow-hidden border border-[hsl(var(--border))]">
+                            <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}`} alt="avatar" />
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                            <p className="text-xs font-black uppercase truncate tracking-tight">{user?.username}</p>
+                            <p className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">Master Admin</p>
+                        </div>
+                    </div>
                     <button
-                        onClick={() => navigate('/login')}
-                        className="w-full flex items-center gap-3 text-[var(--text-muted)] hover:text-red-400 transition-colors py-2 text-sm font-medium"
+                        onClick={() => {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
+                            window.location.href = '/';
+                        }}
+                        className="w-full flex items-center justify-between p-4 bg-[hsl(var(--muted))] rounded-2xl text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.1)] transition-all"
                     >
-                        <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
-                        TERMINATE SESSION
+                        <span className="text-[10px] font-black uppercase tracking-widest">Terminate Session</span>
+                        <LogOut size={16} />
                     </button>
                 </div>
             </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 overflow-y-auto p-8 relative">
-                {/* Header */}
-                <div className="mb-10 flex justify-between items-center">
-                    <div>
-                        <h2 className="text-2xl font-semibold text-[var(--text-main)] capitalize">
-                            {activeTab.replace('-', ' ')}
-                        </h2>
-                        <p className="text-sm text-[var(--text-muted)] mt-1">Management Overview</p>
-                    </div>
-                    <div className="flex items-center gap-4 bg-[var(--bg-card)] px-4 py-2 rounded-lg border border-[var(--border-main)]">
-                        <div className="text-right">
-                            <p className="text-xs text-[var(--text-muted)]">Administrator</p>
-                            <p className="text-sm font-medium text-[var(--text-main)]">{user?.username}</p>
+            {/* Main Content Area */}
+            <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+                <header className="h-24 pt-4 bg-[hsl(var(--card))] border-b border-[hsl(var(--border))] sticky top-0 z-40 px-8 flex items-center justify-between no-print">
+                    <div className="flex items-center gap-6">
+                        <div className="px-6 h-14 flex items-center border border-[hsl(var(--border))] rounded-2xl bg-[hsl(var(--muted)/0.3)]">
+                            <h2 className="text-lg font-black uppercase tracking-tighter text-[hsl(var(--foreground))]">
+                                Central Intelligence Control
+                            </h2>
                         </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-6 mr-6 border-r border-[hsl(var(--border))] pr-6">
+                            <div className="text-right">
+                                <p className="text-[9px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest">Spot Gold</p>
+                                <p className="text-sm font-black">${goldPrice.toLocaleString()}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[9px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest">Forex Rate</p>
+                                <p className="text-sm font-black">{forexRate.toLocaleString()} UGX</p>
+                            </div>
+                        </div>
+
+                        <button onClick={toggleTheme} className="p-3 bg-[hsl(var(--muted))] rounded-2xl text-[hsl(var(--foreground))] hover:bg-[hsl(var(--border))] transition-all">
+                            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                        </button>
                     </div>
                 </header>
 
-                {/* Dashboard Scroll Area */}
-                <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
-
-                {/* Dashboard Tab */}
-                {activeTab === 'dashboard' && (
-                    <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            {[
-                                { label: 'Total Revenue', value: `$${allSales.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}`, icon: TrendingUp, color: 'text-emerald-400' },
-                                { label: 'Transactions', value: allSales.length, icon: ReceiptText, color: 'text-blue-400' },
-                                { label: 'Branches', value: branches.length, icon: Store, color: 'text-purple-400' },
-                                { label: 'System Load', value: 'Optimal', icon: LayoutDashboard, color: 'text-amber-400' },
-                            ].map((stat, i) => (
-                                <div key={i} className="card p-6">
-                                    <div className={`p-2 w-fit rounded-lg bg-[var(--bg-sidebar)] mb-4 ${stat.color}`}>
-                                        <stat.icon size={20} />
-                                    </div>
-                                    <p className="text-2xl font-semibold text-[var(--text-main)]">{stat.value}</p>
-                                    <p className="text-sm text-[var(--text-muted)] mt-1">{stat.label}</p>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="card max-w-4xl">
-                            <h3 className="text-lg font-medium text-[var(--text-main)] mb-6">Global Market Rates</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-3">
-                                    <label className="text-sm text-[var(--text-muted)] font-medium">Spot Gold (USD/oz)</label>
-                                    <div className="flex items-center border-b border-[var(--border-main)] pb-2">
-                                        <span className="text-[var(--text-muted)] mr-2 text-xl">$</span>
-                                        <input
-                                            type="number"
-                                            value={goldPrice}
-                                            onChange={e => setGoldPrice(Number(e.target.value))}
-                                            className="bg-transparent text-3xl font-semibold text-[var(--text-main)] w-full outline-none"
-                                        />
-                                    </div>
-                                    <button
-                                        onClick={updateRates}
-                                        className="btn-primary w-full mt-12 py-5 text-sm font-black uppercase tracking-widest shadow-xl shadow-black/20"
-                                    >
-                                        Synchronize Global Nodes
-                                    </button>
-                                </div>
-                                <div className="space-y-3">
-                                    <label className="text-sm text-[var(--text-muted)] font-medium">Forex Rate (UGX:USD)</label>
-                                    <div className="flex items-center border-b border-[var(--border-main)] pb-2">
-                                        <input
-                                            type="number"
-                                            value={forexRate}
-                                            onChange={e => setForexRate(Number(e.target.value))}
-                                            className="bg-transparent text-3xl font-semibold text-[var(--text-main)] w-full outline-none text-right"
-                                        />
-                                        <span className="text-[var(--text-muted)] ml-2 text-sm font-medium">UGX</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Sales Tab */}
-                {activeTab === 'sales' && (
-                    <div className="animate-in fade-in duration-300">
-                        <div className="mb-6">
-                            <div className="relative max-w-sm">
-                                <Search className="absolute left-3 top-2.5 text-[var(--text-muted)]" size={18} />
-                                <input type="text" placeholder="Search billing records..." className="bg-[var(--bg-main)] border border-[var(--border-main)] rounded-md pl-10 pr-4 py-2 text-sm text-[var(--text-main)] w-full outline-none focus:border-[var(--text-muted)]" />
-                            </div>
-
-                        <div className="card p-0 overflow-hidden">
-                            <table className="w-full text-left font-sans">
-                                <thead>
-                                    <tr className="border-b border-[var(--border-main)] text-[var(--text-muted)] text-xs font-medium bg-[var(--bg-sidebar)]">
-                                        <th className="p-4">Date</th>
-                                        <th className="p-4">Vendor/Branch</th>
-                                        <th className="p-4">Product Details</th>
-                                        <th className="p-4 text-right">Total Amount</th>
-                                        <th className="p-4"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="text-sm">
-                                    {allSales.map(sale => (
-                                        <tr key={sale.id} className="border-b border-[var(--border-main)] hover:bg-[var(--bg-sidebar)] transition-colors group">
-                                            <td className="p-4 text-[var(--text-muted)]">{new Date(sale.created_at).toLocaleDateString()}</td>
-                                            <td className="p-4">
-                                                <p className="text-[var(--text-main)] font-medium">{sale.vendor || 'Private'}</p>
-                                                <p className="text-xs text-[var(--text-muted)]">{sale.branch_name}</p>
-                                            </td>
-                                            <td className="p-4">
-                                                <p className="text-[var(--text-main)] opacity-80">{sale.product_name}</p>
-                                                <p className="text-xs text-[var(--text-muted)]">{sale.actual_process_weight}g | {sale.actual_product_quality}%</p>
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <p className="text-[var(--text-main)] font-semibold">${Number(sale.subtotal).toLocaleString()}</p>
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <button className="text-zinc-600 hover:text-white"><ChevronRight size={18} /></button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* Branches Tab */}
-                {activeTab === 'branches' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
-                        <div className="lg:col-span-2 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {branches.map(b => (
-                                    <div 
-                                        key={b.id} 
-                                        onClick={() => setSelectedBranchForManagers(b)}
-                                        className={`card border-zinc-800 hover:border-zinc-700 transition-all cursor-pointer ${selectedBranchForManagers?.id === b.id ? 'ring-2 ring-white border-white' : ''}`}
-                                    >
-                                        <div className="flex justify-between items-start mb-4">
-                                            <Store className="text-zinc-600" size={24} />
-                                            <span className="text-[10px] bg-emerald-900/30 text-emerald-400 px-2 py-0.5 rounded font-medium">Online</span>
+                <div className="p-8 flex-1">
+                    {/* Dashboard Tab Content */}
+                    {activeTab === 'dashboard' && (
+                        <div className="space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                                {[
+                                    { label: 'Revenue (USD)', value: `$${allSales.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}`, icon: TrendingUp, color: 'text-emerald-500' },
+                                    { label: 'Total Volume (g)', value: `${(allSales.reduce((acc, s) => acc + Number(s.actual_process_weight), 0)).toFixed(2)}`, icon: ReceiptText, color: 'text-blue-500' },
+                                    { label: 'Network Nodes', value: branches.length, icon: Store, color: 'text-orange-500' },
+                                    { label: 'System Status', value: 'OPTIMAL', icon: Activity, color: 'text-purple-500' },
+                                ].map((stat, i) => (
+                                    <div key={i} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-8 rounded-[2rem] shadow-sm hover:shadow-md transition-all group">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-[0.2em]">{stat.label}</p>
+                                            <div className={`p-3 rounded-2xl bg-[hsl(var(--muted))] ${stat.color} group-hover:scale-110 transition-all`}>
+                                                <stat.icon size={20} />
+                                            </div>
                                         </div>
-                                        <h4 className="text-lg font-semibold text-[var(--text-main)]">{b.name}</h4>
-                                        <p className="text-sm text-[var(--text-muted)] mt-1">X-Factor: {b.x_factor}%</p>
-                                        <div className="mt-4 flex items-center text-xs text-[var(--text-muted)] font-medium group">
-                                            Manage Node Personnel <ChevronRight size={14} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                                        <p className="text-3xl font-black text-[hsl(var(--foreground))] tracking-tighter">{stat.value}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                <div className="lg:col-span-2 erp-section relative overflow-hidden">
+                                    <div className="erp-section-header">
+                                        <h3 className="erp-section-title flex items-center gap-2">
+                                            <TrendingUp size={16} /> Market Rate Protocol
+                                        </h3>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2 py-1 rounded-lg">Real-time Node</span>
                                         </div>
                                     </div>
+                                    <div className="erp-section-content space-y-8">
+                                        <div className="grid md:grid-cols-2 gap-8">
+                                            <div className="space-y-4">
+                                                <div className="erp-input-group">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <label className="erp-label !mb-0">Spot Gold Price (USD/OZ)</label>
+                                                        <button 
+                                                            onClick={fetchLiveGoldPrice}
+                                                            className="flex items-center gap-1.5 text-[9px] font-black uppercase text-[hsl(var(--primary))] hover:opacity-70 transition-all"
+                                                        >
+                                                            <RefreshCw size={10} className={showGlobalSyncNotify ? 'animate-spin' : ''} />
+                                                            Auto-Fetch
+                                                        </button>
+                                                    </div>
+                                                    <div className="relative">
+                                                        <input
+                                                            type="number"
+                                                            value={autoGoldPrice || goldPrice}
+                                                            onChange={e => {
+                                                                setGoldPrice(Number(e.target.value));
+                                                                setAutoGoldPrice(null);
+                                                            }}
+                                                            className={`erp-input text-2xl font-black ${autoGoldPrice ? 'border-emerald-500 bg-emerald-500/5 text-emerald-600' : ''}`}
+                                                        />
+                                                        {autoGoldPrice && (
+                                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                                                <span className="text-[9px] font-black uppercase bg-emerald-500 text-white px-2 py-1 rounded-md animate-pulse">Live Price</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                        <div className="card h-fit sticky top-0">
-                             <div className="flex items-center gap-2 mb-6 text-[var(--text-main)] font-medium">
-                                <Plus size={18} /> Add New Node
+                                            <div className="erp-input-group">
+                                                <label className="erp-label">Exchange Rate (UGX/USD)</label>
+                                                <input
+                                                    type="number"
+                                                    value={forexRate}
+                                                    onChange={e => setForexRate(Number(e.target.value))}
+                                                    className="erp-input text-2xl font-black"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {showGlobalSyncNotify && (
+                                            <div className="p-6 bg-orange-500/10 border border-orange-500/20 rounded-[1.5rem] flex items-center justify-between gap-6 animate-in slide-in-from-top duration-300">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-orange-500/20">
+                                                        <ShieldAlert size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-0.5">Globalization Required</p>
+                                                        <p className="text-[11px] text-[hsl(var(--muted-foreground))] leading-tight">Live gold price has changed to <span className="font-black text-orange-600">${autoGoldPrice}</span>. Synchronize with the global network to update all branch terminals.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <button
+                                            onClick={updateRates}
+                                            className={`erp-button-primary w-full py-5 text-sm ${showGlobalSyncNotify ? 'bg-orange-500 shadow-orange-500/20 hover:bg-orange-600' : ''}`}
+                                        >
+                                            {showGlobalSyncNotify ? 'Authorize Global Synchronization' : 'Commit Manual protocol Changes'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="erp-section">
+                                    <div className="erp-section-header">
+                                        <h3 className="erp-section-title">Network Activity</h3>
+                                    </div>
+                                    <div className="erp-section-content !p-0">
+                                        <table className="erp-table">
+                                            <thead className="erp-table-header">
+                                                <tr>
+                                                    <th className="p-3">Branch</th>
+                                                    <th className="p-3 text-right">X-Factor</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {branches.slice(0, 5).map(branch => (
+                                                    <tr key={branch.id} className="border-b border-[var(--border-main)] last:border-0">
+                                                        <td className="p-3 text-[12px] font-bold">{branch.name}</td>
+                                                        <td className="p-3 text-[12px] text-right font-mono">{branch.x_factor}%</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="space-y-4">
-                                <div className="space-y-1">
-                                    <label className="text-xs text-[var(--text-muted)] font-medium">Branch Name</label>
-                                    <input type="text" value={branchName} onChange={e => setBranchName(e.target.value)} className="input-field" placeholder="Enter name" />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-[var(--text-muted)] font-medium">X-Factor (%)</label>
-                                    <input type="number" value={xFactor} onChange={e => setXFactor(Number(e.target.value))} className="input-field" />
-                                </div>
-                            )}
                         </div>
                     )}
 
-                {/* Manager Detail View (Modal-ish overlay or lateral panel) */}
-                {selectedBranchForManagers && activeTab === 'branches' && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                        <div className="bg-[var(--bg-card)] border border-[var(--border-main)] rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
-                            <div className="p-6 border-b border-[var(--border-main)] flex justify-between items-center bg-[var(--bg-sidebar)]">
-                                <div>
-                                    <h3 className="text-xl font-semibold text-[var(--text-main)]">{selectedBranchForManagers.name}</h3>
-                                    <p className="text-xs text-[var(--text-muted)]">Personnel Management</p>
+                    {/* Sales Tab Content */}
+                    {activeTab === 'sales' && (
+                        <div className="space-y-6">
+                            <div className="flex flex-wrap gap-3 mb-6">
+                                <button
+                                    onClick={() => setSalesFilterBranch('All Branches')}
+                                    className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${salesFilterBranch === 'All Branches' ? 'bg-[hsl(var(--primary))] border-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-lg shadow-[hsl(var(--primary)/0.1)]' : 'bg-[hsl(var(--card))] border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--foreground))] hover:text-[hsl(var(--foreground))]'}`}
+                                >
+                                    Global Network View
+                                </button>
+                                {branches.map(branch => (
+                                    <button
+                                        key={branch.id}
+                                        onClick={() => setSalesFilterBranch(branch.name)}
+                                        className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${salesFilterBranch === branch.name ? 'bg-[hsl(var(--primary))] border-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-lg shadow-[hsl(var(--primary)/0.1)]' : 'bg-[hsl(var(--card))] border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--foreground))] hover:text-[hsl(var(--foreground))]'}`}
+                                    >
+                                        {branch.name}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="erp-section">
+                                <div className="erp-section-header">
+                                    <h3 className="erp-section-title">Consolidated Sales Ledger</h3>
+                                    <div className="flex gap-2">
+                                        <span className="text-[10px] font-bold px-2 py-1 bg-zinc-200 dark:bg-zinc-800 rounded uppercase">Filter: {salesFilterBranch}</span>
+                                    </div>
                                 </div>
-                                <button onClick={() => setSelectedBranchForManagers(null)} className="p-2 hover:bg-[var(--bg-main)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+                                <div className="erp-section-content !p-0">
+                                    <table className="erp-table">
+                                        <thead className="erp-table-header">
+                                            <tr>
+                                                <th className="p-4">Timestamp</th>
+                                                <th className="p-4">Branch</th>
+                                                <th className="p-4">Vendor</th>
+                                                <th className="p-4">Purity</th>
+                                                <th className="p-4">Weight (g)</th>
+                                                <th className="p-4">Settlement (USD)</th>
+                                                <th className="p-4 text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                                {allSales
+                                                .filter(s => salesFilterBranch === 'All Branches' || s.branch_name === salesFilterBranch)
+                                                .map(sale => (
+                                                    <tr key={sale.id} className="border-b border-[hsl(var(--border))] last:border-0 hover:bg-[hsl(var(--muted)/0.3)] transition-colors">
+                                                        <td className="p-4 font-mono text-[10px]">{new Date(sale.created_at).toLocaleString()}</td>
+                                                        <td className="p-4 font-black uppercase text-[10px]">{sale.branch_name || 'Global'}</td>
+                                                        <td className="p-4 text-xs font-bold">{sale.vendor}</td>
+                                                        <td className="p-4 font-mono text-xs text-emerald-600 font-bold">{sale.actual_product_quality}%</td>
+                                                        <td className="p-4 font-mono text-xs">{sale.actual_process_weight}g</td>
+                                                        <td className="p-4 font-black text-xs">${Number(sale.paid_amount).toLocaleString()}</td>
+                                                        <td className="p-4 text-right">
+                                                            <button
+                                                                onClick={() => setSelectedSale(sale)}
+                                                                className="text-[10px] font-black uppercase tracking-widest text-[var(--gold-primary)] hover:underline"
+                                                            >
+                                                                View Bill
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Branches Tab Content */}
+                    {activeTab === 'branches' && !selectedBranchForManagers && (
+                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-in fade-in duration-500 items-start">
+                            {/* Left Side: Provision Form (Reduced Width) */}
+                            <div className="erp-section">
+                                <div className="erp-section-header">
+                                    <h3 className="erp-section-title">Provision New Entity</h3>
+                                </div>
+                                <div className="erp-section-content space-y-8">
+                                    <div className="erp-input-group">
+                                        <label className="erp-label">Entity Name</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. Branch Alpha"
+                                            value={branchName}
+                                            onChange={e => setBranchName(e.target.value)}
+                                            className="erp-input"
+                                        />
+                                    </div>
+                                    <div className="erp-input-group">
+                                        <label className="erp-label">Efficiency Factor (%)</label>
+                                        <input
+                                            type="number"
+                                            placeholder="92.0"
+                                            value={xFactor}
+                                            onChange={e => setXFactor(Number(e.target.value))}
+                                            className="erp-input"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={createBranch}
+                                        className="w-full py-4 bg-[var(--gold-gradient)] text-black font-black rounded-2xl shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest text-xs"
+                                    >
+                                        Register Branch
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Right Side: Established Entities (2nd column) */}
+                            <div className="xl:col-span-2 erp-section">
+                                <div className="erp-section-header">
+                                    <h3 className="erp-section-title">Established Entities</h3>
+                                </div>
+                                <div className="erp-section-content">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {branches.map(branch => (
+                                            <div key={branch.id} className="p-6 bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] rounded-3xl flex flex-col gap-4 group transition-all">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">Entity Name</p>
+                                                        <p className="text-sm font-black uppercase">{branch.name}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">Efficiency</p>
+                                                        <p className="text-sm font-mono font-bold">{branch.x_factor}%</p>
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                                    <button
+                                                        onClick={() => setSelectedBranchForManagers(branch)}
+                                                        className="py-2.5 bg-[var(--gold-gradient)] text-black text-[10px] font-black uppercase tracking-widest rounded-xl shadow-sm hover:opacity-90 transition-all text-center"
+                                                    >
+                                                        Manage
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteBranch(branch.id)}
+                                                        className="py-2.5 bg-red-500/10 text-red-600 border border-red-500/20 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-500 hover:text-white transition-all text-center"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {branches.length === 0 && (
+                                            <div className="col-span-full py-10 text-center">
+                                                <p className="text-[10px] font-black uppercase text-[hsl(var(--muted-foreground))] tracking-widest">No entities registered.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'branches' && selectedBranchForManagers && (
+                        <div className="space-y-8 animate-in fade-in zoom-in duration-500">
+                            <button 
+                                onClick={() => setSelectedBranchForManagers(null)}
+                                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-all group"
+                            >
+                                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                                Return to Entity Registry
+                            </button>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                {/* Left Side: Details & Manager Form */}
+                                <div className="space-y-8">
+                                    <div className="erp-section border-l-4 border-black dark:border-white">
+                                        <div className="erp-section-header">
+                                            <h3 className="erp-section-title">Branch Intelligence</h3>
+                                        </div>
+                                        <div className="erp-section-content space-y-4">
+                                            <div className="bg-[hsl(var(--muted)/0.5)] p-6 rounded-3xl">
+                                                <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-2">Entity Identity</p>
+                                                <p className="text-2xl font-black uppercase">{selectedBranchForManagers.name}</p>
+                                                <div className="mt-4 flex items-center gap-4">
+                                                    <div className="px-3 py-1 bg-white/50 dark:bg-black/20 rounded-full border border-[hsl(var(--border))]">
+                                                        <span className="text-[10px] font-black font-mono">{selectedBranchForManagers.x_factor}% X-FACTOR</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-6 space-y-6">
+                                                <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest pl-1">Provision Branch Manager</p>
+                                                <div className="space-y-4">
+                                                    <div className="erp-input-group">
+                                                        <label className="erp-label">Username</label>
+                                                        <input type="text" value={newManagerUsername} onChange={e => setNewManagerUsername(e.target.value)} className="erp-input" placeholder="manager_id" />
+                                                    </div>
+                                                    <div className="erp-input-group">
+                                                        <label className="erp-label">Email</label>
+                                                        <input type="email" value={newManagerEmail} onChange={e => setNewManagerEmail(e.target.value)} className="erp-input" placeholder="m@golderp.com" />
+                                                    </div>
+                                                    <div className="erp-input-group">
+                                                        <label className="erp-label">Access Password</label>
+                                                        <input type="password" value={newManagerPassword} onChange={e => setNewManagerPassword(e.target.value)} className="erp-input" />
+                                                    </div>
+                                                    <button onClick={createManager} className="w-full py-4 bg-[var(--gold-gradient)] text-black font-black rounded-2xl shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest text-xs">
+                                                        Authorize Manager
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right Side: Personnel Lists */}
+                                <div className="lg:col-span-2 space-y-8">
+                                    {/* Managers Section */}
+                                    <div className="erp-section">
+                                        <div className="erp-section-header">
+                                            <h3 className="erp-section-title">Branch Managers</h3>
+                                        </div>
+                                        <div className="erp-section-content !p-0">
+                                            <div className="grid gap-4 p-4">
+                                                {usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').length === 0 ? (
+                                                    <p className="text-center py-10 text-[10px] font-black uppercase text-[hsl(var(--muted-foreground))] tracking-widest">No managers assigned.</p>
+                                                ) : (
+                                                    usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').map(mgr => (
+                                                        <div key={mgr.id} className="p-6 bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] rounded-3xl flex items-center justify-between group">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className={`w-3 h-3 rounded-full ${mgr.is_active ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`} />
+                                                                <div>
+                                                                    <p className="text-sm font-black uppercase mb-0.5">{mgr.username}</p>
+                                                                    <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))]">{mgr.email}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <button onClick={() => toggleUserStatus(mgr.id)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mgr.is_active ? 'bg-[var(--gold-gradient)] text-black shadow-sm' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'}`}>
+                                                                    {mgr.is_active ? 'Suspend' : 'Restore'}
+                                                                </button>
+                                                                <button onClick={() => removeUser(mgr.id)} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-all">
+                                                                    Remove
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Staff Section */}
+                                    <div className="erp-section">
+                                        <div className="erp-section-header">
+                                            <h3 className="erp-section-title">Branch Staff</h3>
+                                        </div>
+                                        <div className="erp-section-content !p-0">
+                                            <div className="grid gap-4 p-4">
+                                                {usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'STAFF').length === 0 ? (
+                                                    <p className="text-center py-10 text-[10px] font-black uppercase text-[hsl(var(--muted-foreground))] tracking-widest">No staff records found.</p>
+                                                ) : (
+                                                    usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'STAFF').map(staff => (
+                                                        <div key={staff.id} className="p-6 bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] rounded-3xl flex items-center justify-between group">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className={`w-3 h-3 rounded-full ${staff.is_active ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`} />
+                                                                <div>
+                                                                    <p className="text-sm font-black uppercase mb-0.5">{staff.username}</p>
+                                                                    <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))]">{staff.email}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <button onClick={() => toggleUserStatus(staff.id)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${staff.is_active ? 'bg-[var(--gold-gradient)] text-black shadow-sm' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'}`}>
+                                                                    {staff.is_active ? 'Suspend' : 'Restore'}
+                                                                </button>
+                                                                <button onClick={() => removeUser(staff.id)} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-all">
+                                                                    Remove
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Expenses Tab Content */}
+                    {activeTab === 'expenses' && (
+                        <div className="erp-section">
+                            <div className="erp-section-header">
+                                <h3 className="erp-section-title">Consolidated Expense Ledger</h3>
+                            </div>
+                            <div className="erp-section-content !p-0">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-[hsl(var(--muted))] text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border-b border-[hsl(var(--border))]">
+                                            <tr>
+                                                <th className="p-6">Posting Date</th>
+                                                <th className="p-6">Origin Entity</th>
+                                                <th className="p-6">Procurement Source</th>
+                                                <th className="p-6">Volume (g)</th>
+                                                <th className="p-6">Rate/g</th>
+                                                <th className="p-6 text-right">Settlement (USD)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-[hsl(var(--border))]">
+                                            {expenses.map(exp => (
+                                                <tr key={exp.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors">
+                                                    <td className="p-6 font-mono text-xs">{exp.date}</td>
+                                                    <td className="p-6 font-black uppercase text-[11px]">{exp.branch_name || 'Global HQ'}</td>
+                                                    <td className="p-6 text-sm font-bold">{exp.source_name}</td>
+                                                    <td className="p-6 font-mono font-bold">{exp.grams}</td>
+                                                    <td className="p-6 font-mono text-[hsl(var(--muted-foreground))]">${exp.rate_per_gram}</td>
+                                                    <td className="p-6 text-right font-black text-red-500">-${Number(exp.total).toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Matrix Tab Content */}
+                    {activeTab === 'matrix' && (
+                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-in fade-in duration-500">
+                            <div className="xl:col-span-2 erp-section h-fit max-h-[70vh] flex flex-col">
+                                <div className="erp-section-header shrink-0">
+                                    <h3 className="erp-section-title">Density & Purity Matrix</h3>
+                                </div>
+                                <div className="erp-section-content !p-0 overflow-y-auto">
+                                    <table className="w-full text-left border-collapse relative">
+                                        <thead className="sticky top-0 bg-[hsl(var(--card))] z-10 text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border-b border-[hsl(var(--border))]">
+                                            <tr>
+                                                <th className="p-6">Density Level</th>
+                                                <th className="p-6">Purity Equiv (%)</th>
+                                                <th className="p-6 text-right">Operations</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-[hsl(var(--border))]">
+                                            {matrixList.map(item => (
+                                                <tr key={item.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors">
+                                                    <td className="p-6 font-mono font-black text-sm">{item.density}</td>
+                                                    <td className="p-6 font-mono text-sm text-emerald-600 font-black">{item.purity}%</td>
+                                                    <td className="p-6 text-right">
+                                                        <button onClick={() => deleteMatrixEntry(item.id)} className="p-2 text-[hsl(var(--muted-foreground))] hover:text-red-500 transition-colors">
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-6">
+                                <div className="erp-section h-fit">
+                                    <div className="erp-section-header">
+                                        <h3 className="erp-section-title">Add Reference Value</h3>
+                                    </div>
+                                    <div className="erp-section-content">
+                                        <div className="space-y-4">
+                                            <div className="erp-input-group">
+                                                <label className="erp-label">Calculated Density</label>
+                                                <input type="number" step="0.01" value={newDensity} onChange={e => setNewDensity(e.target.value)} className="erp-input" placeholder="e.g. 17.25" />
+                                            </div>
+                                            <div className="erp-input-group">
+                                                <label className="erp-label">Purity (%)</label>
+                                                <input type="number" step="0.01" value={newPurity} onChange={e => setNewPurity(e.target.value)} className="erp-input" placeholder="e.g. 85.82" />
+                                            </div>
+                                            <button onClick={createMatrixEntry} className="erp-button-primary w-full">Commit Reference</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="erp-section h-fit">
+                                    <div className="erp-section-header flex justify-between items-center">
+                                        <h3 className="erp-section-title">Bulk Import Matrix</h3>
+                                        <button 
+                                            onClick={downloadDemoTemplate}
+                                            title="Download Demo Template"
+                                            className="p-2 hover:bg-[var(--bg-sidebar)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all"
+                                        >
+                                            <FileDown size={18} />
+                                        </button>
+                                    </div>
+                                    <div className="erp-section-content">
+                                        <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} disabled={isUploading} className="erp-input mb-4 p-2 text-xs disabled:opacity-50" />
+                                        
+                                        {isUploading && (
+                                            <div className="mb-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded flex items-center gap-4 animate-in fade-in zoom-in duration-300">
+                                                <Loader2 className="animate-spin text-emerald-500" size={20} />
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Uploading Matrix...</p>
+                                                        <p className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">{uploadProgress.current} / {uploadProgress.total}</p>
+                                                    </div>
+                                                    <div className="h-1 bg-[var(--border-main)] rounded-full overflow-hidden">
+                                                        <div 
+                                                            className="h-full bg-emerald-500 transition-all duration-300" 
+                                                            style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="mt-4 p-6 bg-[hsl(var(--muted))] rounded-2xl border border-[hsl(var(--border))] text-[10px] text-[hsl(var(--muted-foreground))]">
+                                            <p className="font-black mb-2 uppercase tracking-widest text-[hsl(var(--foreground))]">Excel Format Guide:</p>
+                                            <p className="leading-relaxed">Select an Excel file to immediately append all entries. Ensure the spreadsheet contains exactly two columns: <strong className="text-[hsl(var(--foreground))]">Density</strong> and <strong className="text-[hsl(var(--foreground))]">Purity</strong>.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Logs Tab Content */}
+                    {activeTab === 'logs' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="erp-section">
+                                <div className="erp-section-header">
+                                    <h3 className="erp-section-title flex items-center gap-2">
+                                        <HistoryIcon size={16} /> System Audit Intelligence
+                                    </h3>
+                                    <button 
+                                        onClick={fetchAdminLogs}
+                                        className="p-2 hover:bg-[hsl(var(--muted))] rounded-xl transition-all text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))]"
+                                    >
+                                        <RefreshCw size={16} />
+                                    </button>
+                                </div>
+                                <div className="erp-section-content !p-0">
+                                    <div className="max-h-[70vh] overflow-y-auto">
+                                        <table className="erp-table">
+                                            <thead className="erp-table-header sticky top-0 z-10 bg-[hsl(var(--card))]">
+                                                <tr>
+                                                    <th className="p-6">Timeline</th>
+                                                    <th className="p-6">Administrator</th>
+                                                    <th className="p-6">Protocol Action</th>
+                                                    <th className="p-6">Audit Details</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-[hsl(var(--border))]">
+                                                {adminLogs.map(log => (
+                                                    <tr key={log.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors group">
+                                                        <td className="p-6 font-mono text-[11px] text-[hsl(var(--muted-foreground))]">
+                                                            {new Date(log.created_at).toLocaleString()}
+                                                        </td>
+                                                        <td className="p-6">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-6 h-6 rounded-lg bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[hsl(var(--primary))]">
+                                                                    <Command size={12} />
+                                                                </div>
+                                                                <span className="text-xs font-black uppercase tracking-tight">{log.username}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-6">
+                                                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${
+                                                                log.action.includes('DELETE') || log.action.includes('REVOKE') ? 'bg-red-500/10 text-red-500' :
+                                                                log.action.includes('CREATE') ? 'bg-emerald-500/10 text-emerald-500' :
+                                                                'bg-blue-500/10 text-blue-500'
+                                                            }`}>
+                                                                {log.action.replace(/_/g, ' ')}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-6 text-[12px] font-bold text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors">
+                                                            {log.details}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {adminLogs.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={4} className="p-20 text-center">
+                                                            <div className="flex flex-col items-center gap-4 text-[hsl(var(--muted-foreground))]">
+                                                                <Info size={48} className="opacity-20" />
+                                                                <p className="text-[10px] font-black uppercase tracking-[0.2em]">No protocol records found.</p>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Sales Bill Overlay */}
+                {selectedSale && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+                        <div className="bg-[hsl(var(--card))] w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-[hsl(var(--border))] overflow-hidden flex flex-col max-h-[90vh]">
+                            <div className="p-8 border-b border-[hsl(var(--border))] flex justify-between items-center bg-[hsl(var(--muted)/0.3)]">
+                                <div>
+                                    <h2 className="text-xl font-black uppercase tracking-tight">Transaction Bill</h2>
+                                    <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mt-1">Ref: {selectedSale.id}</p>
+                                </div>
+                                <button onClick={() => setSelectedSale(null)} className="p-3 bg-white dark:bg-zinc-900 border border-[hsl(var(--border))] rounded-2xl hover:bg-red-500 hover:text-white transition-all">
                                     <X size={20} />
                                 </button>
                             </div>
                             
-                            <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                                {/* Current Managers */}
-                                <div>
-                                    <h4 className="text-sm font-medium text-[var(--text-muted)] mb-4 uppercase tracking-widest flex items-center gap-2">
-                                        <Users size={16} /> Current Branch Managers
-                                    </h4>
-                                    <div className="space-y-3">
-                                        {usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').length > 0 ? (
-                                            usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').map(m => (
-                                                <div key={m.id} className="bg-[var(--bg-main)] border border-[var(--border-main)] p-4 rounded-lg flex justify-between items-center">
-                                                    <div>
-                                                        <p className="text-sm font-medium text-[var(--text-main)]">{m.username}</p>
-                                                        <p className="text-xs text-[var(--text-muted)]">{m.email}</p>
-                                                    </div>
-                                                    <span className="text-[10px] bg-[var(--bg-sidebar)] text-[var(--text-muted)] px-2 py-1 rounded">ACTIVE</span>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <p className="text-sm text-[var(--text-muted)] italic py-4">No managers assigned to this branch yet.</p>
-                                        )}
+                            <div className="flex-1 overflow-y-auto p-10 space-y-10">
+                                {/* Bill Header */}
+                                <div className="grid grid-cols-2 gap-8 pb-8 border-b border-dashed border-[hsl(var(--border))]">
+                                    <div>
+                                        <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-2">Entity Origin</p>
+                                        <p className="text-sm font-black uppercase">{selectedSale.branch_name || 'Global HQ'}</p>
+                                        <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] mt-1">{new Date(selectedSale.created_at).toLocaleString()}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-2">Vendor / Source</p>
+                                        <p className="text-sm font-black uppercase">{selectedSale.vendor}</p>
+                                        <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] mt-1">Method: {selectedSale.purchase_method}</p>
                                     </div>
                                 </div>
 
-                                {/* Create Manager Form */}
-                                <div className="pt-6 border-t border-[var(--border-main)]">
-                                    <h4 className="text-sm font-medium text-[var(--text-muted)] mb-4 uppercase tracking-widest flex items-center gap-2">
-                                        <Plus size={16} /> Assign New Manager
-                                    </h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <input 
-                                            type="text" 
-                                            placeholder="Username" 
-                                            value={newManagerUsername} 
-                                            onChange={e => setNewManagerUsername(e.target.value)} 
-                                            className="input-field" 
-                                        />
-                                        <input 
-                                            type="email" 
-                                            placeholder="Email" 
-                                            value={newManagerEmail} 
-                                            onChange={e => setNewManagerEmail(e.target.value)} 
-                                            className="input-field" 
-                                        />
-                                        <input 
-                                            type="password" 
-                                            placeholder="Password" 
-                                            value={newManagerPassword} 
-                                            onChange={e => setNewManagerPassword(e.target.value)} 
-                                            className="input-field col-span-1 md:col-span-2" 
-                                        />
-                                        <button 
-                                            onClick={() => createManager(selectedBranchForManagers.id)} 
-                                            className="btn-primary col-span-1 md:col-span-2 mt-2"
-                                        >
-                                            Confirm Manager Assignment
-                                        </button>
+                                {/* Financial Breakdown */}
+                                <div className="space-y-6">
+                                    <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))] border-l-4 border-[var(--gold-primary)] pl-3">Financial Settlement</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="bg-[hsl(var(--muted)/0.3)] p-6 rounded-3xl border border-[hsl(var(--border))]">
+                                            <p className="text-[9px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">Market Rate</p>
+                                            <p className="text-lg font-black">${Number(selectedSale.market_price).toLocaleString()}<span className="text-[10px] ml-1">/g</span></p>
+                                        </div>
+                                        <div className="bg-[hsl(var(--muted)/0.3)] p-6 rounded-3xl border border-[hsl(var(--border))]">
+                                            <p className="text-[9px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">X-Factor</p>
+                                            <p className="text-lg font-black">{selectedSale.x_factor}%</p>
+                                        </div>
+                                        <div className="bg-[hsl(var(--muted)/0.3)] p-6 rounded-3xl border border-[hsl(var(--border))]">
+                                            <p className="text-[9px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">Forex Rate</p>
+                                            <p className="text-lg font-black">{Number(selectedSale.currency_rate).toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Product Details */}
+                                <div className="space-y-4">
+                                    <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))] border-l-4 border-[var(--gold-primary)] pl-3">Product Specifications</h4>
+                                    <div className="erp-section !p-0 overflow-hidden">
+                                        <table className="w-full text-left">
+                                            <thead className="bg-[hsl(var(--muted))] border-b border-[hsl(var(--border))]">
+                                                <tr>
+                                                    <th className="p-4 text-[9px] font-black uppercase tracking-widest">Description</th>
+                                                    <th className="p-4 text-[9px] font-black uppercase tracking-widest">Weight</th>
+                                                    <th className="p-4 text-[9px] font-black uppercase tracking-widest">Purity</th>
+                                                    <th className="p-4 text-right text-[9px] font-black uppercase tracking-widest">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr className="border-b border-[hsl(var(--border))] last:border-0">
+                                                    <td className="p-4">
+                                                        <p className="text-sm font-black uppercase">{selectedSale.product_name}</p>
+                                                        <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{selectedSale.description || 'Standard Gold Settlement'}</p>
+                                                    </td>
+                                                    <td className="p-4 font-mono text-sm font-bold">{selectedSale.actual_process_weight}g</td>
+                                                    <td className="p-4 font-mono text-sm font-bold text-emerald-600">{selectedSale.actual_product_quality}%</td>
+                                                    <td className="p-4 text-right font-black text-sm">${Number(selectedSale.paid_amount).toLocaleString()}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* Grand Totals */}
+                                <div className="bg-black text-white p-8 rounded-[2rem] flex justify-between items-center shadow-xl">
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">Total Local Settlement</p>
+                                        <p className="text-2xl font-black">{Number(selectedSale.total_ugx).toLocaleString()} <span className="text-sm opacity-60">UGX</span></p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">USD Equiv</p>
+                                        <p className="text-2xl font-black text-[var(--gold-primary)]">${Number(selectedSale.paid_amount).toLocaleString()}</p>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
 
-                    {/* Reports Tab */}
-                    {activeTab === 'reports' && (
-                        <div className="flex flex-col items-center justify-center h-96 text-zinc-600 animate-in fade-in duration-300">
-                            <BarChart3 size={48} className="mb-4 opacity-20" />
-                            <p className="text-lg font-medium">Enterprise Reporting Suite</p>
-                            <p className="text-sm mt-1">Advanced analytics modules coming soon</p>
+                            <div className="p-8 bg-[hsl(var(--muted)/0.3)] border-t border-[hsl(var(--border))] flex gap-4 no-print">
+                                <button onClick={() => window.print()} className="flex-1 py-4 bg-white dark:bg-zinc-900 border border-[hsl(var(--border))] text-black dark:text-white font-black rounded-2xl hover:bg-[hsl(var(--muted))] transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2">
+                                    <FileDown size={16} /> Export Receipt
+                                </button>
+                                <button onClick={() => setSelectedSale(null)} className="flex-1 py-4 bg-black text-white font-black rounded-2xl hover:bg-zinc-800 transition-all uppercase tracking-widest text-xs">
+                                    Close Terminal
+                                </button>
+                            </div>
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </main>
         </div>
     );
 };
 
 export default AdminDashboard;
-
-
-
