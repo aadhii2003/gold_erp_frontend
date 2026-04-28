@@ -43,6 +43,10 @@ export const syncAllData = async (token: string) => {
                 case 'CREATE_BRANCH':
                     endpoint = 'http://127.0.0.1:8000/api/branches/';
                     break;
+                case 'DELETE_USER':
+                    endpoint = `http://127.0.0.1:8000/api/users/${action.payload.id}/delete/`;
+                    method = 'delete';
+                    break;
                 default:
                     console.warn('Unknown action type in outbox', action.type);
                     continue;

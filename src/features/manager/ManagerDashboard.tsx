@@ -177,6 +177,13 @@ const ManagerDashboard = () => {
     };
 
     const toggleUserStatus = async (id: number) => {
+        if (!navigator.onLine) {
+            await queueAction('TOGGLE_USER', { id });
+            alert('Offline: Status update queued. It will sync when online.');
+            // Optimistically update UI if possible, or just wait for sync
+            return;
+        }
+
         try {
             await axios.patch(`http://127.0.0.1:8000/api/users/${id}/toggle/`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -188,6 +195,13 @@ const ManagerDashboard = () => {
 
     const deleteUser = async (id: number) => {
         if (!window.confirm('Permanently delete this staff account?')) return;
+
+        if (!navigator.onLine) {
+            await queueAction('DELETE_USER', { id });
+            alert('Offline: Deletion queued. It will sync when online.');
+            return;
+        }
+
         try {
             const res = await axios.delete(`http://127.0.0.1:8000/api/users/${id}/delete/`, {
                 headers: { Authorization: `Bearer ${token}` }
