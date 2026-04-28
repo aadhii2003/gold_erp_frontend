@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../../api/axiosConfig';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../app/store';
 import { useNavigate } from 'react-router-dom';
@@ -66,7 +66,7 @@ const ManagerDashboard = () => {
         }
 
         const handleOnline = () => {
-            if (token) syncAllData(token).then(() => {
+            if (token) syncAllData().then(() => {
                 fetchSales();
                 fetchStaff();
                 fetchExpenses();
@@ -78,18 +78,14 @@ const ManagerDashboard = () => {
 
     const fetchSales = async () => {
         try {
-            const res = await axios.get('http://127.0.0.1:8000/api/sales/', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await apiClient.get('/sales/');
             setSales(res.data);
         } catch(e) { console.error(e); }
     };
 
     const fetchStaff = async () => {
         try {
-            const res = await axios.get('http://127.0.0.1:8000/api/users/', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await apiClient.get('/users/');
             setStaffList(res.data);
             await saveUsersOffline(res.data);
         } catch(e) { 
@@ -101,9 +97,7 @@ const ManagerDashboard = () => {
 
     const fetchExpenses = async () => {
         try {
-            const res = await axios.get('http://127.0.0.1:8000/api/expenses/', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await apiClient.get('/expenses/');
             setExpenses(res.data);
             await saveExpensesOffline(res.data);
         } catch(e) { 
@@ -132,9 +126,7 @@ const ManagerDashboard = () => {
         }
 
         try {
-            await axios.post('http://127.0.0.1:8000/api/users/create/', payload, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await apiClient.post('/users/create/', payload);
             alert('Staff account created successfully.');
             setNewUsername('');
             setNewEmail('');
@@ -166,7 +158,7 @@ const ManagerDashboard = () => {
         }
 
         try {
-            await axios.post('http://127.0.0.1:8000/api/expenses/create/', payload, { headers: { Authorization: `Bearer ${token}` } });
+            await apiClient.post('/expenses/create/', payload);
             
             setSourceName('');
             setRatePerGram('');
@@ -185,9 +177,7 @@ const ManagerDashboard = () => {
         }
 
         try {
-            await axios.patch(`http://127.0.0.1:8000/api/users/${id}/toggle/`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await apiClient.patch(`/users/${id}/toggle/`);
             fetchStaff();
             alert('Status updated.');
         } catch (e) { alert('Status update failed.'); }
@@ -203,9 +193,7 @@ const ManagerDashboard = () => {
         }
 
         try {
-            const res = await axios.delete(`http://127.0.0.1:8000/api/users/${id}/delete/`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await apiClient.delete(`/users/${id}/delete/`);
             fetchStaff();
             alert(res.data.message || 'Staff permanently deleted.');
         } catch (e) { alert('Deletion failed.'); }

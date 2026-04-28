@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../../api/axiosConfig';
 import * as XLSX from 'xlsx';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../app/store';
@@ -113,8 +113,8 @@ const AdminDashboard = () => {
 
         const handleStatusChange = () => {
             setIsOnline(navigator.onLine);
-            if (navigator.onLine && token) {
-                syncAllData(token).then(() => {
+            if (navigator.onLine) {
+                syncAllData().then(() => {
                     fetchBranches();
                     fetchUsers();
                     fetchGlobalSales();
@@ -129,11 +129,11 @@ const AdminDashboard = () => {
             window.removeEventListener('online', handleStatusChange);
             window.removeEventListener('offline', handleStatusChange);
         };
-    }, [user, navigate, token]);
+    }, [user, navigate]);
 
     const fetchAdminLogs = async () => {
         try {
-            const res = await axios.get('http://127.0.0.1:8000/api/user-logs/', { headers: { Authorization: `Bearer ${token}` } });
+            const res = await apiClient.get('/user-logs/');
             setAdminLogs(res.data);
             await saveLogsOffline(res.data);
         } catch (e) { 
@@ -154,7 +154,7 @@ const AdminDashboard = () => {
 
     const fetchExpenses = async () => {
         try {
-            const res = await axios.get('http://127.0.0.1:8000/api/expenses/', { headers: { Authorization: `Bearer ${token}` } });
+            const res = await apiClient.get('/expenses/');
             setExpenses(res.data);
             await saveExpensesOffline(res.data);
         } catch (e) { 
@@ -166,7 +166,7 @@ const AdminDashboard = () => {
 
     const fetchMatrix = async () => {
         try {
-            const res = await axios.get('http://127.0.0.1:8000/api/density-purity/', { headers: { Authorization: `Bearer ${token}` } });
+            const res = await apiClient.get('/density-purity/');
             setMatrixList(res.data);
         } catch (e) { console.error(e); }
     };
@@ -174,8 +174,18 @@ const AdminDashboard = () => {
     const createMatrixEntry = async () => {
         if (!newDensity || !newPurity) return;
         if (!window.confirm('Register this reference entry?')) return;
+        const payload = { density: newDensity, purity: newPurity };
+
+        if (!navigator.onLine) {
+            await queueAction('CREATE_MATRIX', payload);
+            alert('Offline: Matrix entry queued.');
+            setNewDensity('');
+            setNewPurity('');
+            return;
+        }
+
         try {
-            await axios.post('http://127.0.0.1:8000/api/density-purity/', { density: newDensity, purity: newPurity }, { headers: { Authorization: `Bearer ${token}` } });
+            await apiClient.post('/density-purity/', payload);
             setNewDensity('');
             setNewPurity('');
             fetchMatrix();
@@ -185,8 +195,14 @@ const AdminDashboard = () => {
 
     const deleteMatrixEntry = async (id: number) => {
         if (!window.confirm('Remove this reference entry?')) return;
+        if (!navigator.onLine) {
+            await queueAction('DELETE_MATRIX', { id });
+            alert('Offline: Deletion queued.');
+            return;
+        }
+
         try {
-            await axios.delete(`http://127.0.0.1:8000/api/density-purity/${id}/`, { headers: { Authorization: `Bearer ${token}` } });
+            await apiClient.delete(`/density-purity/${id}/`);
             fetchMatrix();
             fetchAdminLogs();
         } catch (e) { alert('Failed to delete entry.'); }
@@ -249,7 +265,7 @@ const AdminDashboard = () => {
 
     const fetchBranches = async () => {
         try {
-            const res = await axios.get('http://127.0.0.1:8000/api/branches/', { headers: { Authorization: `Bearer ${token}` } });
+            const res = await apiClient.get('/branches/');
             setBranches(res.data);
             await saveBranchesOffline(res.data);
         } catch (e) { 
@@ -261,7 +277,7 @@ const AdminDashboard = () => {
 
     const fetchUsers = async () => {
         try {
-            const res = await axios.get('http://127.0.0.1:8000/api/users/', { headers: { Authorization: `Bearer ${token}` } });
+            const res = await apiClient.get('/users/');
             setUsersList(res.data);
             await saveUsersOffline(res.data);
         } catch (e) { 
@@ -273,18 +289,26 @@ const AdminDashboard = () => {
 
     const fetchGlobalSales = async () => {
         try {
-            const res = await axios.get('http://127.0.0.1:8000/api/sales/', { headers: { Authorization: `Bearer ${token}` } });
+            const res = await apiClient.get('/sales/');
             setAllSales(res.data);
         } catch (e) { console.error(e); }
     };
 
     const updateRates = async () => {
         if (!window.confirm('Synchronize these rates across the entire global network?')) return;
+        const payload = {
+            gold_price: autoGoldPrice || goldPrice,
+            forex_rate: forexRate
+        };
+
+        if (!navigator.onLine) {
+            await queueAction('UPDATE_RATES', payload);
+            alert('Offline: Rates sync queued.');
+            return;
+        }
+
         try {
-            await axios.post('http://127.0.0.1:8000/api/rates/', {
-                gold_price: autoGoldPrice || goldPrice,
-                forex_rate: forexRate
-            }, { headers: { Authorization: `Bearer ${token}` } });
+            await apiClient.post('/gold-rates/update/', payload);
             
             if (autoGoldPrice) setGoldPrice(autoGoldPrice);
             dispatch(setRates({ gold_price: autoGoldPrice || goldPrice, forex_rate: forexRate }));
@@ -298,11 +322,20 @@ const AdminDashboard = () => {
     const createBranch = async () => {
         if (!branchName) return;
         if (!window.confirm(`Deploy new entity: ${branchName}?`)) return;
+        const payload = {
+            name: branchName,
+            x_factor: xFactor
+        };
+
+        if (!navigator.onLine) {
+            await queueAction('CREATE_BRANCH', payload);
+            alert('Offline: Branch creation queued.');
+            setBranchName('');
+            return;
+        }
+
         try {
-            await axios.post('http://127.0.0.1:8000/api/branches/create/', {
-                name: branchName,
-                x_factor: xFactor
-            }, { headers: { Authorization: `Bearer ${token}` } });
+            await apiClient.post('/branches/', payload);
             setBranchName('');
             setXFactor(92.0);
             fetchBranches();
@@ -316,8 +349,14 @@ const AdminDashboard = () => {
 
     const deleteBranch = async (id: number) => {
         if (!window.confirm('Are you sure you want to decommission this branch? All associated data will remain but the branch entity will be removed.')) return;
+        if (!navigator.onLine) {
+            await queueAction('DELETE_BRANCH', { id });
+            alert('Offline: Decommissioning queued.');
+            return;
+        }
+
         try {
-            await axios.delete(`http://127.0.0.1:8000/api/branches/${id}/`, { headers: { Authorization: `Bearer ${token}` } });
+            await apiClient.delete(`/branches/${id}/`);
             fetchBranches();
             fetchAdminLogs();
             alert('Branch decommissioned.');
@@ -327,14 +366,23 @@ const AdminDashboard = () => {
     const createManager = async () => {
         if (!selectedBranchForManagers || !newManagerUsername) return;
         if (!window.confirm(`Authorize ${newManagerUsername} as a manager for ${selectedBranchForManagers.name}?`)) return;
+        const payload = {
+            username: newManagerUsername,
+            password: newManagerPassword,
+            email: newManagerEmail,
+            role: 'MANAGER',
+            branch: selectedBranchForManagers.id
+        };
+
+        if (!navigator.onLine) {
+            await queueAction('CREATE_STAFF', payload); // Reusing CREATE_STAFF logic for Manager creation
+            alert('Offline: Manager authorization queued.');
+            setNewManagerUsername('');
+            return;
+        }
+
         try {
-            await axios.post('http://127.0.0.1:8000/api/users/create/', {
-                username: newManagerUsername,
-                password: newManagerPassword,
-                email: newManagerEmail,
-                role: 'MANAGER',
-                branch: selectedBranchForManagers.id
-            }, { headers: { Authorization: `Bearer ${token}` } });
+            await apiClient.post('/users/create/', payload);
             setNewManagerUsername('');
             setNewManagerPassword('');
             setNewManagerEmail('');
@@ -349,8 +397,14 @@ const AdminDashboard = () => {
 
     const toggleUserStatus = async (userId: number) => {
         if (!window.confirm('Update user authorization status?')) return;
+        if (!navigator.onLine) {
+            await queueAction('TOGGLE_USER', { id: userId });
+            alert('Offline: Status update queued.');
+            return;
+        }
+
         try {
-            await axios.patch(`http://127.0.0.1:8000/api/users/${userId}/toggle/`, {}, { headers: { Authorization: `Bearer ${token}` } });
+            await apiClient.patch(`/users/${userId}/toggle/`);
             fetchUsers();
             fetchAdminLogs();
             alert('User status updated successfully.');
@@ -359,8 +413,14 @@ const AdminDashboard = () => {
 
     const removeUser = async (userId: number) => {
         if (!window.confirm('Permanently revoke access and remove this user from the system?')) return;
+        if (!navigator.onLine) {
+            await queueAction('DELETE_USER', { id: userId });
+            alert('Offline: Removal queued.');
+            return;
+        }
+
         try {
-            const res = await axios.delete(`http://127.0.0.1:8000/api/users/${userId}/delete/`, { headers: { Authorization: `Bearer ${token}` } });
+            const res = await apiClient.delete(`/users/${userId}/delete/`);
             fetchUsers();
             fetchAdminLogs();
             alert(res.data.message || 'User permanently removed from the system.');

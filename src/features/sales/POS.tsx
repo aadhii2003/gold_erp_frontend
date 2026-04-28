@@ -5,7 +5,7 @@ import { calculateDensity, calculatePurity } from '../../utils/calculations';
 import { saveSaleOffline, saveConstantsOffline, getConstantsOffline } from '../../db/indexedDB';
 import { syncAllData } from '../../utils/syncManager';
 import { v4 as uuidv4 } from 'uuid';
-import axios from 'axios';
+import apiClient from '../../api/axiosConfig';
 import {
     LayoutDashboard,
     Calculator,
@@ -151,7 +151,7 @@ const POS = () => {
         window.addEventListener('wheel', handleWheel, { passive: false });
 
         const handleOnline = () => {
-            if (token) syncAllData(token).then(() => {
+            if (token) syncAllData().then(() => {
                 fetchMySales();
                 fetchConstants();
             });
@@ -168,9 +168,9 @@ const POS = () => {
     const fetchConstants = async () => {
         try {
             const [uResp, cResp, mResp] = await Promise.all([
-                axios.get('http://127.0.0.1:8000/api/uoms/', { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get('http://127.0.0.1:8000/api/currencies/', { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get('http://127.0.0.1:8000/api/density-purity/', { headers: { Authorization: `Bearer ${token}` } })
+                apiClient.get('/uoms/'),
+                apiClient.get('/currencies/'),
+                apiClient.get('/density-purity/')
             ]);
             setUoms(uResp.data);
             setCurrencies(cResp.data);
@@ -191,9 +191,7 @@ const POS = () => {
     const fetchMySales = async () => {
         if (!token) return;
         try {
-            const res = await axios.get('http://127.0.0.1:8000/api/sales/', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await apiClient.get('/sales/');
             setSalesLedger(res.data);
         } catch (e) { }
     };

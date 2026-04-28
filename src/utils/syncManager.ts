@@ -1,7 +1,7 @@
-import axios from 'axios';
+import apiClient from '../api/axiosConfig';
 import { getPendingSales, markSalesSynced, getPendingActions, deleteAction } from '../db/indexedDB';
 
-export const syncAllData = async (token: string) => {
+export const syncAllData = async () => {
     if (!navigator.onLine) return;
 
     console.log('Starting Global Sync...');
@@ -10,9 +10,7 @@ export const syncAllData = async (token: string) => {
     const pendingSales = await getPendingSales();
     if (pendingSales.length > 0) {
         try {
-            const res = await axios.post('http://127.0.0.1:8000/api/sales/sync/', { sales: pendingSales }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await apiClient.post('/sales/sync/', { sales: pendingSales });
             if (res.status === 201 || res.status === 200) {
                 await markSalesSynced(pendingSales.map(s => s.id));
                 console.log('Sales synced successfully');
@@ -27,24 +25,38 @@ export const syncAllData = async (token: string) => {
     for (const action of pendingActions) {
         try {
             let endpoint = '';
-            let method: 'post' | 'patch' | 'delete' = 'post';
+            let method: 'post' | 'patch' | 'delete' | 'put' = 'post';
 
             switch (action.type) {
                 case 'CREATE_EXPENSE':
-                    endpoint = 'http://127.0.0.1:8000/api/expenses/create/';
+                    endpoint = '/expenses/create/';
                     break;
                 case 'CREATE_STAFF':
-                    endpoint = 'http://127.0.0.1:8000/api/users/create/';
+                    endpoint = '/users/create/';
                     break;
                 case 'TOGGLE_USER':
-                    endpoint = `http://127.0.0.1:8000/api/users/${action.payload.id}/toggle/`;
+                    endpoint = `/users/${action.payload.id}/toggle/`;
                     method = 'patch';
                     break;
-                case 'CREATE_BRANCH':
-                    endpoint = 'http://127.0.0.1:8000/api/branches/';
-                    break;
                 case 'DELETE_USER':
-                    endpoint = `http://127.0.0.1:8000/api/users/${action.payload.id}/delete/`;
+                    endpoint = `/users/${action.payload.id}/delete/`;
+                    method = 'delete';
+                    break;
+                case 'CREATE_BRANCH':
+                    endpoint = '/branches/';
+                    break;
+                case 'DELETE_BRANCH':
+                    endpoint = `/branches/${action.payload.id}/`;
+                    method = 'delete';
+                    break;
+                case 'UPDATE_RATES':
+                    endpoint = '/gold-rates/update/';
+                    break;
+                case 'CREATE_MATRIX':
+                    endpoint = '/density-purity/';
+                    break;
+                case 'DELETE_MATRIX':
+                    endpoint = `/density-purity/${action.payload.id}/`;
                     method = 'delete';
                     break;
                 default:
@@ -53,11 +65,10 @@ export const syncAllData = async (token: string) => {
             }
 
             if (endpoint) {
-                const res = await axios({
+                const res = await apiClient({
                     url: endpoint,
                     method,
-                    data: action.payload,
-                    headers: { Authorization: `Bearer ${token}` }
+                    data: action.payload
                 });
 
                 if (res.status >= 200 && res.status < 300) {
