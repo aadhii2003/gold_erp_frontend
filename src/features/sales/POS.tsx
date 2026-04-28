@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../app/store';
 import { calculateDensity, calculatePurity } from '../../utils/calculations';
-import { saveSaleOffline } from '../../db/indexedDB';
+import { saveSaleOffline, saveConstantsOffline, getConstantsOffline } from '../../db/indexedDB';
+import { syncAllData } from '../../utils/syncManager';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import {
@@ -149,11 +150,20 @@ const POS = () => {
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('wheel', handleWheel, { passive: false });
 
+        const handleOnline = () => {
+            if (token) syncAllData(token).then(() => {
+                fetchMySales();
+                fetchConstants();
+            });
+        };
+        window.addEventListener('online', handleOnline);
+
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('wheel', handleWheel);
+            window.removeEventListener('online', handleOnline);
         };
-    }, []);
+    }, [token]);
 
     const fetchConstants = async () => {
         try {
@@ -165,7 +175,17 @@ const POS = () => {
             setUoms(uResp.data);
             setCurrencies(cResp.data);
             setMatrixList(mResp.data);
-        } catch (e) { }
+            await saveConstantsOffline('uoms', uResp.data);
+            await saveConstantsOffline('currencies', cResp.data);
+            await saveConstantsOffline('matrix', mResp.data);
+        } catch (e) { 
+            const offU = await getConstantsOffline('uoms');
+            const offC = await getConstantsOffline('currencies');
+            const offM = await getConstantsOffline('matrix');
+            if (offU.length) setUoms(offU);
+            if (offC.length) setCurrencies(offC);
+            if (offM.length) setMatrixList(offM);
+        }
     };
 
     const fetchMySales = async () => {
@@ -322,8 +342,9 @@ const POS = () => {
         await saveSaleOffline(lastSavedSale);
 
         if (navigator.onLine) {
-            window.dispatchEvent(new Event('online'));
-            setTimeout(fetchMySales, 1000);
+            syncAllData(token).then(() => {
+                fetchMySales();
+            });
         }
 
         // Reset for next bill

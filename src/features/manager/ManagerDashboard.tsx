@@ -25,6 +25,13 @@ import {
     FileDown,
     Eye
 } from 'lucide-react';
+import { 
+    saveUsersOffline, getUsersOffline,
+    saveExpensesOffline, getExpensesOffline,
+    saveLogsOffline, getLogsOffline,
+    queueAction
+} from '../../db/indexedDB';
+import { syncAllData } from '../../utils/syncManager';
 
 const ManagerDashboard = () => {
     const { token, user } = useSelector((state: RootState) => state.auth);
@@ -57,7 +64,17 @@ const ManagerDashboard = () => {
             fetchStaff();
             fetchExpenses();
         }
-    }, [user, navigate]);
+
+        const handleOnline = () => {
+            if (token) syncAllData(token).then(() => {
+                fetchSales();
+                fetchStaff();
+                fetchExpenses();
+            });
+        };
+        window.addEventListener('online', handleOnline);
+        return () => window.removeEventListener('online', handleOnline);
+    }, [user, navigate, token]);
 
     const fetchSales = async () => {
         try {
@@ -74,7 +91,12 @@ const ManagerDashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setStaffList(res.data);
-        } catch(e) { console.error(e); }
+            await saveUsersOffline(res.data);
+        } catch(e) { 
+            console.error(e); 
+            const offlineUsers = await getUsersOffline();
+            if (offlineUsers.length > 0) setStaffList(offlineUsers);
+        }
     };
 
     const fetchExpenses = async () => {
@@ -83,18 +105,34 @@ const ManagerDashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setExpenses(res.data);
-        } catch(e) { console.error(e); }
+            await saveExpensesOffline(res.data);
+        } catch(e) { 
+            console.error(e); 
+            const offlineExpenses = await getExpensesOffline();
+            if (offlineExpenses.length > 0) setExpenses(offlineExpenses);
+        }
     };
 
     const createStaff = async () => {
         if (!newUsername || !newPassword) return;
+        const payload = { 
+            username: newUsername, 
+            email: newEmail,
+            password: newPassword, 
+            role: 'STAFF' 
+        };
+
+        if (!navigator.onLine) {
+            await queueAction('CREATE_STAFF', payload);
+            alert('Offline: Staff creation queued. It will sync when online.');
+            setNewUsername('');
+            setNewEmail('');
+            setNewPassword('');
+            return;
+        }
+
         try {
-            await axios.post('http://127.0.0.1:8000/api/users/create/', { 
-                username: newUsername, 
-                email: newEmail,
-                password: newPassword, 
-                role: 'STAFF' 
-            }, {
+            await axios.post('http://127.0.0.1:8000/api/users/create/', payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             alert('Staff account created successfully.');
@@ -109,15 +147,26 @@ const ManagerDashboard = () => {
 
     const createExpense = async () => {
         if (!sourceName || !ratePerGram || !grams) return;
+        const payload = {
+            source_name: sourceName,
+            rate_per_gram: Number(ratePerGram),
+            grams: Number(grams),
+            total: expenseTotal,
+            date: expenseDate,
+            branch: (user as any)?.branch_id
+        };
+
+        if (!navigator.onLine) {
+            await queueAction('CREATE_EXPENSE', payload);
+            alert('Offline: Expense recorded locally. It will sync when online.');
+            setSourceName('');
+            setRatePerGram('');
+            setGrams('');
+            return;
+        }
+
         try {
-            await axios.post('http://127.0.0.1:8000/api/expenses/create/', {
-                source_name: sourceName,
-                rate_per_gram: Number(ratePerGram),
-                grams: Number(grams),
-                total: expenseTotal,
-                date: expenseDate,
-                branch: (user as any)?.branch_id
-            }, { headers: { Authorization: `Bearer ${token}` } });
+            await axios.post('http://127.0.0.1:8000/api/expenses/create/', payload, { headers: { Authorization: `Bearer ${token}` } });
             
             setSourceName('');
             setRatePerGram('');

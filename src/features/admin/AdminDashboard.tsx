@@ -36,12 +36,22 @@ import {
     History as HistoryIcon,
     Eye
 } from 'lucide-react';
+import { 
+    saveBranchesOffline, getBranchesOffline,
+    saveUsersOffline, getUsersOffline,
+    saveExpensesOffline, getExpensesOffline,
+    saveLogsOffline, getLogsOffline,
+    queueAction
+} from '../../db/indexedDB';
+import { syncAllData } from '../../utils/syncManager';
 
 const AdminDashboard = () => {
     const { token, user, rates } = useSelector((state: RootState) => state.auth);
     const { theme, toggleTheme } = useTheme();
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
 
     const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -100,13 +110,37 @@ const AdminDashboard = () => {
             fetchMatrix();
             fetchAdminLogs();
         }
-    }, [user, navigate]);
+
+        const handleStatusChange = () => {
+            setIsOnline(navigator.onLine);
+            if (navigator.onLine && token) {
+                syncAllData(token).then(() => {
+                    fetchBranches();
+                    fetchUsers();
+                    fetchGlobalSales();
+                    fetchAdminLogs();
+                });
+            }
+        };
+
+        window.addEventListener('online', handleStatusChange);
+        window.addEventListener('offline', handleStatusChange);
+        return () => {
+            window.removeEventListener('online', handleStatusChange);
+            window.removeEventListener('offline', handleStatusChange);
+        };
+    }, [user, navigate, token]);
 
     const fetchAdminLogs = async () => {
         try {
             const res = await axios.get('http://127.0.0.1:8000/api/user-logs/', { headers: { Authorization: `Bearer ${token}` } });
             setAdminLogs(res.data);
-        } catch (e) { console.error(e); }
+            await saveLogsOffline(res.data);
+        } catch (e) { 
+            console.error(e); 
+            const offlineLogs = await getLogsOffline();
+            if (offlineLogs.length > 0) setAdminLogs(offlineLogs);
+        }
     };
 
     const fetchLiveGoldPrice = async () => {
@@ -122,7 +156,12 @@ const AdminDashboard = () => {
         try {
             const res = await axios.get('http://127.0.0.1:8000/api/expenses/', { headers: { Authorization: `Bearer ${token}` } });
             setExpenses(res.data);
-        } catch (e) { console.error(e); }
+            await saveExpensesOffline(res.data);
+        } catch (e) { 
+            console.error(e); 
+            const offlineExpenses = await getExpensesOffline();
+            if (offlineExpenses.length > 0) setExpenses(offlineExpenses);
+        }
     };
 
     const fetchMatrix = async () => {
@@ -212,14 +251,24 @@ const AdminDashboard = () => {
         try {
             const res = await axios.get('http://127.0.0.1:8000/api/branches/', { headers: { Authorization: `Bearer ${token}` } });
             setBranches(res.data);
-        } catch (e) { console.error(e); }
+            await saveBranchesOffline(res.data);
+        } catch (e) { 
+            console.error(e); 
+            const offlineBranches = await getBranchesOffline();
+            if (offlineBranches.length > 0) setBranches(offlineBranches);
+        }
     };
 
     const fetchUsers = async () => {
         try {
             const res = await axios.get('http://127.0.0.1:8000/api/users/', { headers: { Authorization: `Bearer ${token}` } });
             setUsersList(res.data);
-        } catch (e) { console.error(e); }
+            await saveUsersOffline(res.data);
+        } catch (e) { 
+            console.error(e); 
+            const offlineUsers = await getUsersOffline();
+            if (offlineUsers.length > 0) setUsersList(offlineUsers);
+        }
     };
 
     const fetchGlobalSales = async () => {
