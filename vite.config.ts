@@ -7,11 +7,27 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg', 'pwa-icon.png'],
       manifest: {
-        name: 'Gold ERP POS',
+        name: 'Gold ERP POS System',
         short_name: 'GoldERP',
-        theme_color: '#000000',
-        icons: []
+        description: 'Advanced Enterprise Resource Planning for Gold Trading',
+        theme_color: '#09090b',
+        background_color: '#09090b',
+        display: 'standalone',
+        orientation: 'portrait',
+        start_url: '/',
+        icons: [
+          {
+            src: 'pwa-icon.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
+          }
+        ]
+      },
+      devOptions: {
+        enabled: true
       }
     })
   ],

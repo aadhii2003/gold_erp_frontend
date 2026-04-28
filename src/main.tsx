@@ -12,6 +12,11 @@ import './index.css';
 import { ThemeProvider } from './context/ThemeContext';
 import { seedAdmin } from './db/indexedDB';
 
+import { registerSW } from 'virtual:pwa-register';
+
+// Register PWA Service Worker
+registerSW({ immediate: true });
+
 // Seed initial credentials for offline-first development
 seedAdmin().catch(console.error);
 
@@ -37,11 +42,3 @@ ReactDOM.createRoot(rootElement).render(
     </Provider>
   </React.StrictMode>
 );
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('SW Registered', reg))
-      .catch(err => console.log('SW Reg failed', err));
-  });
-}

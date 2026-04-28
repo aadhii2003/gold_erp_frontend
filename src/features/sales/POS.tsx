@@ -36,8 +36,8 @@ const SidebarItem = ({ id, label, icon: Icon, activeTab, onClick }: { id: string
     <button
         onClick={() => onClick(id)}
         className={`w-full flex items-center gap-3 px-6 py-4 transition-all relative group ${activeTab === id
-                ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-lg shadow-[hsl(var(--primary)/0.2)] rounded-2xl scale-[1.02]'
-                : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.5)] rounded-2xl'
+            ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-lg shadow-[hsl(var(--primary)/0.2)] rounded-2xl scale-[1.02]'
+            : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.5)] rounded-2xl'
             }`}
     >
         <Icon size={18} />
@@ -161,7 +161,13 @@ const POS = () => {
         const grossWt = Number(p.grossWeight || 0);
 
         const processLoss = (grossWt > 0 && actualWt > 0) ? grossWt - actualWt : 0;
-        const density = (actualWt > 0 && secondWt > 0) ? calculateDensity(actualWt, secondWt) : 0;
+        let density = 0;
+        if (actualWt > 0 && secondWt > 0) {
+            const rawDensity = calculateDensity(actualWt, secondWt);
+            const str = rawDensity.toString();
+            const parts = str.split('.');
+            density = Number(parts[0] + '.' + (parts[1] ? parts[1].padEnd(2, '0').slice(0, 2) : '00'));
+        }
 
         let computedPurity = 0;
         if (density > 0) {
@@ -312,8 +318,8 @@ const POS = () => {
         <div className="flex h-screen bg-[hsl(var(--background))] font-sans overflow-hidden transition-all duration-300">
             <aside
                 className={`fixed lg:relative z-[60] h-full flex flex-col bg-[hsl(var(--card))] no-print transition-all duration-500 ease-in-out shadow-2xl lg:shadow-none overflow-hidden ${isSidebarOpen
-                        ? 'w-72 translate-x-0 border-r border-[hsl(var(--border))] pointer-events-auto'
-                        : 'w-0 -translate-x-full lg:w-0 border-none pointer-events-none'
+                    ? 'w-72 translate-x-0 border-r border-[hsl(var(--border))] pointer-events-auto'
+                    : 'w-0 -translate-x-full lg:w-0 border-none pointer-events-none'
                     }`}
             >
                 <div className="h-24 flex items-center pt-4 px-6 border-b border-[hsl(var(--border))]">
@@ -506,8 +512,8 @@ const POS = () => {
                                     <div className="erp-input-group">
                                         <label className="erp-label">Change Currency</label>
                                         <select value={changeCurrency} onChange={e => setChangeCurrency(e.target.value)} className="erp-input text-xl py-5">
-                                            <option value="AED">AED</option>
-                                            <option value="UGX">UGX</option>
+                                            <option value="AED">UGX</option>
+                                            <option value="UGX">ADE</option>
                                             <option value="USD">USD</option>
                                         </select>
                                     </div>
@@ -602,6 +608,16 @@ const POS = () => {
                                                         <label className="erp-label text-[9px]">Second Process Weight</label>
                                                         <input type="number" value={p.secondProcessWeight} onChange={e => updateProduct(p.id, 'secondProcessWeight', e.target.value as any)} className="erp-input text-lg font-black py-4" placeholder="0" />
                                                     </div>
+                                                    {/* <div className="erp-input-group">
+                                                        <label className="erp-label text-[9px]">Density</label>
+                                                        <div className="erp-input bg-[hsl(var(--muted))] text-lg font-black py-4 opacity-70">
+                                                            {(() => {
+                                                                const s = (p.density || 0).toString();
+                                                                const parts = s.split('.');
+                                                                return parts[0] + '.' + (parts[1] ? parts[1].padEnd(2, '0').slice(0, 2) : '00');
+                                                            })()}
+                                                        </div>
+                                                    </div> */}
                                                     <div className="erp-input-group">
                                                         <label className="erp-label">UOM</label>
                                                         <select value={p.uom} onChange={e => updateProduct(p.id, 'uom', e.target.value)} className="erp-input text-sm py-4">
@@ -690,7 +706,7 @@ const POS = () => {
                                                         </span>
                                                     </td>
                                                     <td className="p-6 text-right">
-                                                        <button 
+                                                        <button
                                                             onClick={() => handleViewSale(sale)}
                                                             className="p-3 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] rounded-xl transition-all"
                                                             title="View Bill"
