@@ -372,7 +372,7 @@ const POS = () => {
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`Bill_${lastSavedSale.client_name || 'Sale'}_${lastSavedSale.id.split('-')[0]}.pdf`);
+            pdf.save(`Bill_${lastSavedSale.client_name || 'Sale'}_${String(lastSavedSale.id).split('-')[0]}.pdf`);
         } catch (e) {
             alert('PDF generation failed. Please use Print -> Save as PDF.');
         }
