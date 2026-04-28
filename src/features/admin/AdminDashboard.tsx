@@ -707,33 +707,33 @@ const AdminDashboard = () => {
                                         <div className="erp-section-header">
                                             <h3 className="erp-section-title">Branch Intelligence</h3>
                                         </div>
-                                        <div className="erp-section-content space-y-4">
-                                            <div className="bg-[hsl(var(--muted)/0.5)] p-6 rounded-3xl">
-                                                <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-2">Entity Identity</p>
-                                                <p className="text-2xl font-black uppercase">{selectedBranchForManagers.name}</p>
-                                                <div className="mt-4 flex items-center gap-4">
+                                        <div className="erp-section-content space-y-3">
+                                            <div className="bg-[hsl(var(--muted)/0.5)] p-4 rounded-2xl">
+                                                <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">Entity Identity</p>
+                                                <p className="text-lg font-black uppercase">{selectedBranchForManagers.name}</p>
+                                                <div className="mt-2 flex items-center gap-4">
                                                     <div className="px-3 py-1 bg-white/50 dark:bg-black/20 rounded-full border border-[hsl(var(--border))]">
                                                         <span className="text-[10px] font-black font-mono">{selectedBranchForManagers.x_factor}% X-FACTOR</span>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <div className="pt-6 space-y-6">
+                                            <div className="pt-2 space-y-3">
                                                 <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest pl-1">Provision Branch Manager</p>
-                                                <div className="space-y-4">
+                                                <div className="space-y-3">
                                                     <div className="erp-input-group">
-                                                        <label className="erp-label">Username</label>
-                                                        <input type="text" value={newManagerUsername} onChange={e => setNewManagerUsername(e.target.value)} className="erp-input" placeholder="manager_id" />
+                                                        <label className="erp-label !mb-1">Username</label>
+                                                        <input type="text" value={newManagerUsername} onChange={e => setNewManagerUsername(e.target.value)} className="erp-input py-2" placeholder="manager_id" />
                                                     </div>
                                                     <div className="erp-input-group">
-                                                        <label className="erp-label">Email</label>
-                                                        <input type="email" value={newManagerEmail} onChange={e => setNewManagerEmail(e.target.value)} className="erp-input" placeholder="m@golderp.com" />
+                                                        <label className="erp-label !mb-1">Email</label>
+                                                        <input type="email" value={newManagerEmail} onChange={e => setNewManagerEmail(e.target.value)} className="erp-input py-2" placeholder="m@golderp.com" />
                                                     </div>
                                                     <div className="erp-input-group">
-                                                        <label className="erp-label">Access Password</label>
-                                                        <input type="password" value={newManagerPassword} onChange={e => setNewManagerPassword(e.target.value)} className="erp-input" />
+                                                        <label className="erp-label !mb-1">Access Password</label>
+                                                        <input type="password" value={newManagerPassword} onChange={e => setNewManagerPassword(e.target.value)} className="erp-input py-2" />
                                                     </div>
-                                                    <button onClick={createManager} className="w-full py-4 bg-[var(--gold-gradient)] text-black font-black rounded-2xl shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest text-xs">
+                                                    <button onClick={createManager} className="w-full py-3 mt-2 bg-[var(--gold-gradient)] text-black font-black rounded-xl shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest text-xs">
                                                         Authorize Manager
                                                     </button>
                                                 </div>
