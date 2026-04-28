@@ -380,49 +380,6 @@ const POS = () => {
 
     return (
         <div className="flex h-screen bg-[hsl(var(--background))] font-sans overflow-hidden transition-all duration-300">
-            <style>{`
-                input[type=number]::-webkit-inner-spin-button, 
-                input[type=number]::-webkit-outer-spin-button { 
-                    -webkit-appearance: none; 
-                    margin: 0; 
-                }
-                input[type=number] {
-                    -moz-appearance: textfield;
-                }
-                @media print {
-                    /* Hide everything by default */
-                    body * {
-                        visibility: hidden;
-                    }
-                    /* Show the receipt modal and its children */
-                    #receipt-modal-container, #receipt-modal-container * {
-                        visibility: visible;
-                    }
-                    /* Reset positioning for print */
-                    #receipt-modal-container {
-                        position: absolute !important;
-                        left: 0 !important;
-                        top: 0 !important;
-                        width: 100% !important;
-                        height: auto !important;
-                        display: block !important;
-                        background: white !important;
-                    }
-                    /* Ensure scrollable areas expand */
-                    #receipt-content {
-                        overflow: visible !important;
-                        height: auto !important;
-                    }
-                    /* Force white background and black text */
-                    * {
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                    }
-                    .no-print {
-                        display: none !important;
-                    }
-                }
-            `}</style>
             <aside
                 className={`fixed lg:relative z-[60] h-full flex flex-col bg-[hsl(var(--card))] no-print transition-all duration-500 ease-in-out shadow-2xl lg:shadow-none overflow-hidden ${isSidebarOpen
                     ? 'w-72 translate-x-0 border-r border-[hsl(var(--border))] pointer-events-auto'

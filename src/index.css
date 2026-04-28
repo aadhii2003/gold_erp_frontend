@@ -124,25 +124,71 @@ input[type=number] {
 
 /* Print Styles */
 @media print {
-  .no-print { display: none !important; }
-  body { background: white !important; color: black !important; }
-  
-  #receipt-content {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+  @page {
     margin: 0;
-    padding: 2cm;
-    background: white !important;
-    color: black !important;
+    size: auto;
   }
 
-  /* Hide everything except receipt content */
-  body > * { display: none !important; }
-  .fixed:has(#receipt-content) {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    visibility: hidden;
+  }
+
+  /* Reset root for print */
+  #root {
+    display: block !important;
+    position: static !important;
+  }
+
+  /* Only show the receipt modal container */
+  #receipt-modal-container,
+  #receipt-modal-container * {
+    visibility: visible;
+  }
+
+  #receipt-modal-container {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure the content area inside the modal is also visible and expanded */
+  #receipt-content {
+    display: block !important;
+    visibility: visible !important;
+    overflow: visible !important;
+    height: auto !important;
+    padding: 1cm !important;
+  }
+
+  /* Reset fixed wrappers during print */
+  .fixed.inset-0:has(#receipt-modal-container) {
     display: block !important;
     position: static !important;
     background: white !important;
+    z-index: auto !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
