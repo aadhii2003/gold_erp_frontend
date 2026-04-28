@@ -1019,102 +1019,138 @@ const AdminDashboard = () => {
                     )}
                 </div>
 
-                {/* Sales Bill Overlay */}
+                {/* Sale Bill Overlay */}
                 {selectedSale && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
-                        <div className="bg-[hsl(var(--card))] w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-[hsl(var(--border))] overflow-hidden flex flex-col max-h-[90vh]">
-                            <div className="p-8 border-b border-[hsl(var(--border))] flex justify-between items-center bg-[hsl(var(--muted)/0.3)]">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 print:p-0 print:bg-white print:backdrop-blur-none print:static">
+                        <div className="bg-white text-zinc-900 w-full max-w-[90rem] h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col print:shadow-none print:border-none print:w-full print:h-auto print:overflow-visible border border-white/20">
+                            {/* Modal Actions */}
+                            <div className="p-8 bg-zinc-50 border-b flex justify-between items-center print:hidden">
                                 <div>
-                                    <h2 className="text-xl font-black uppercase tracking-tight">Transaction Bill</h2>
-                                    <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mt-1">Ref: {selectedSale.id}</p>
+                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Document Generation Protocol</h3>
+                                    <p className="text-sm font-black text-zinc-900">Review Transaction</p>
                                 </div>
-                                <button onClick={() => setSelectedSale(null)} className="p-3 bg-white dark:bg-zinc-900 border border-[hsl(var(--border))] rounded-2xl hover:bg-red-500 hover:text-white transition-all">
-                                    <X size={20} />
-                                </button>
-                            </div>
-                            
-                            <div className="flex-1 overflow-y-auto p-10 space-y-10">
-                                {/* Bill Header */}
-                                <div className="grid grid-cols-2 gap-8 pb-8 border-b border-dashed border-[hsl(var(--border))]">
-                                    <div>
-                                        <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-2">Entity Origin</p>
-                                        <p className="text-sm font-black uppercase">{selectedSale.branch_name || 'Global HQ'}</p>
-                                        <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] mt-1">{new Date(selectedSale.created_at).toLocaleString()}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-2">Vendor / Source</p>
-                                        <p className="text-sm font-black uppercase">{selectedSale.vendor}</p>
-                                        <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] mt-1">Method: {selectedSale.purchase_method}</p>
-                                    </div>
-                                </div>
-
-                                {/* Financial Breakdown */}
-                                <div className="space-y-6">
-                                    <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))] border-l-4 border-[var(--gold-primary)] pl-3">Financial Settlement</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div className="bg-[hsl(var(--muted)/0.3)] p-6 rounded-3xl border border-[hsl(var(--border))]">
-                                            <p className="text-[9px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">Market Rate</p>
-                                            <p className="text-lg font-black">${Number(selectedSale.market_price).toLocaleString()}<span className="text-[10px] ml-1">/g</span></p>
-                                        </div>
-                                        <div className="bg-[hsl(var(--muted)/0.3)] p-6 rounded-3xl border border-[hsl(var(--border))]">
-                                            <p className="text-[9px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">X-Factor</p>
-                                            <p className="text-lg font-black">{selectedSale.x_factor}%</p>
-                                        </div>
-                                        <div className="bg-[hsl(var(--muted)/0.3)] p-6 rounded-3xl border border-[hsl(var(--border))]">
-                                            <p className="text-[9px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">Forex Rate</p>
-                                            <p className="text-lg font-black">{Number(selectedSale.currency_rate).toLocaleString()}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Product Details */}
-                                <div className="space-y-4">
-                                    <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))] border-l-4 border-[var(--gold-primary)] pl-3">Product Specifications</h4>
-                                    <div className="erp-section !p-0 overflow-hidden">
-                                        <table className="w-full text-left">
-                                            <thead className="bg-[hsl(var(--muted))] border-b border-[hsl(var(--border))]">
-                                                <tr>
-                                                    <th className="p-4 text-[9px] font-black uppercase tracking-widest">Description</th>
-                                                    <th className="p-4 text-[9px] font-black uppercase tracking-widest">Weight</th>
-                                                    <th className="p-4 text-[9px] font-black uppercase tracking-widest">Purity</th>
-                                                    <th className="p-4 text-right text-[9px] font-black uppercase tracking-widest">Total</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr className="border-b border-[hsl(var(--border))] last:border-0">
-                                                    <td className="p-4">
-                                                        <p className="text-sm font-black uppercase">{selectedSale.product_name}</p>
-                                                        <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{selectedSale.description || 'Standard Gold Settlement'}</p>
-                                                    </td>
-                                                    <td className="p-4 font-mono text-sm font-bold">{selectedSale.actual_process_weight}g</td>
-                                                    <td className="p-4 font-mono text-sm font-bold text-emerald-600">{selectedSale.actual_product_quality}%</td>
-                                                    <td className="p-4 text-right font-black text-sm">${Number(selectedSale.paid_amount).toLocaleString()}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                {/* Grand Totals */}
-                                <div className="bg-black text-white p-8 rounded-[2rem] flex justify-between items-center shadow-xl">
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">Total Local Settlement</p>
-                                        <p className="text-2xl font-black">{Number(selectedSale.total_ugx).toLocaleString()} <span className="text-sm opacity-60">UGX</span></p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">USD Equiv</p>
-                                        <p className="text-2xl font-black text-[var(--gold-primary)]">${Number(selectedSale.paid_amount).toLocaleString()}</p>
-                                    </div>
+                                <div className="flex gap-4">
+                                    <button
+                                        onClick={() => window.print()}
+                                        className="px-10 py-4 bg-zinc-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl flex items-center gap-3"
+                                    >
+                                        <FileDown size={16} /> Print Bill
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedSale(null)}
+                                        className="p-4 text-zinc-400 hover:text-red-500 transition-colors"
+                                    >
+                                        <X size={24} />
+                                    </button>
                                 </div>
                             </div>
 
-                            <div className="p-8 bg-[hsl(var(--muted)/0.3)] border-t border-[hsl(var(--border))] flex gap-4 no-print">
-                                <button onClick={() => window.print()} className="flex-1 py-4 bg-white dark:bg-zinc-900 border border-[hsl(var(--border))] text-black dark:text-white font-black rounded-2xl hover:bg-[hsl(var(--muted))] transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2">
-                                    <FileDown size={16} /> Export Receipt
-                                </button>
-                                <button onClick={() => setSelectedSale(null)} className="flex-1 py-4 bg-black text-white font-black rounded-2xl hover:bg-zinc-800 transition-all uppercase tracking-widest text-xs">
-                                    Close Terminal
-                                </button>
+                            {/* Printable Receipt Area */}
+                            <div id="receipt-content" className="p-12 print:p-8 font-sans text-zinc-900 bg-white flex-1 overflow-y-auto print:overflow-visible print:h-auto">
+                                <>
+                                    {/* Top Header */}
+                                    <div className="flex justify-between items-start mb-10">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-zinc-800">{selectedSale.vendor || 'Walking Customer'}</h2>
+                                        </div>
+                                        <div className="text-right space-y-1">
+                                            <div className="flex gap-4 justify-end">
+                                                <span className="font-bold">Date:</span>
+                                                <span>{selectedSale.created_at ? new Date(selectedSale.created_at).toLocaleDateString('en-GB') : '---'}</span>
+                                            </div>
+                                            <div className="flex gap-4 justify-end">
+                                                <span className="font-bold">PO#:</span>
+                                                <span className="font-mono">PN{selectedSale.id ? String(selectedSale.id).split('-')[0].toUpperCase() : '---'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Summary Stats Row */}
+                                    <div className="grid grid-cols-3 gap-8 mb-8 text-[13px]">
+                                        <div className="flex gap-4">
+                                            <span className="font-bold">Mkt Price:</span>
+                                            <span>{Number(selectedSale.market_price || 0).toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex gap-4 justify-center">
+                                            <span className="font-bold">Additions:</span>
+                                            <span>{Number(selectedSale.discount_addition || 0).toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex gap-4 justify-end">
+                                            <span className="font-bold">Forex Rate:</span>
+                                            <span>{Number(selectedSale.currency_rate || 0).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Main Transaction Table */}
+                                    <table className="w-full text-[13px] border-collapse mb-6">
+                                        <thead>
+                                            <tr className="border-b border-zinc-200">
+                                                <th className="py-4 px-2 text-left font-bold">SI #</th>
+                                                <th className="py-4 px-2 text-center font-bold">Qty Grams</th>
+                                                <th className="py-4 px-2 text-center font-bold">Qty Tolas</th>
+                                                <th className="py-4 px-2 text-center font-bold">Tola Rate</th>
+                                                <th className="py-4 px-2 text-center font-bold">Purity %</th>
+                                                <th className="py-4 px-2 text-center font-bold">Unit Price</th>
+                                                <th className="py-4 px-2 text-center font-bold">Price Currency</th>
+                                                <th className="py-4 px-2 text-right font-bold">Subtotal</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-zinc-50">
+                                            <tr>
+                                                <td className="py-4 px-2">RM</td>
+                                                <td className="py-4 px-2 text-center">{Number(selectedSale.actual_process_weight || 0).toFixed(2)}</td>
+                                                <td className="py-4 px-2 text-center">{Number(selectedSale.qty_tolas || 0).toFixed(4)}</td>
+                                                <td className="py-4 px-2 text-center">{Number(selectedSale.tola_rate || 0).toFixed(2)}</td>
+                                                <td className="py-4 px-2 text-center">{Number(selectedSale.actual_product_quality || 0).toFixed(4)}</td>
+                                                <td className="py-4 px-2 text-center">{Number(selectedSale.unit_price || 0).toFixed(2)}</td>
+                                                <td className="py-4 px-2 text-center">{selectedSale.market_price_currency || 'USD'}</td>
+                                                <td className="py-4 px-2 text-right">{Number(selectedSale.subtotal || 0).toFixed(2)}</td>
+                                            </tr>
+                                        </tbody>
+                                        <tfoot>
+                                            <tr className="border-y-2 border-zinc-900 font-bold">
+                                                <td className="py-3 px-2">Total</td>
+                                                <td className="py-3 px-2 text-center">{Number(selectedSale.actual_process_weight || 0).toFixed(2)}</td>
+                                                <td className="py-3 px-2 text-center">{Number(selectedSale.qty_tolas || 0).toFixed(4)}</td>
+                                                <td colSpan={4}></td>
+                                                <td className="py-3 px-2 text-right">
+                                                    <div className="flex justify-end gap-4">
+                                                        <span>{selectedSale.market_price_currency || 'USD'} $:</span>
+                                                        <span>{Number(selectedSale.subtotal || 0).toFixed(2)}</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+
+                                    {/* Payment Summary */}
+                                    <div className="flex justify-end mb-12">
+                                        <div className="w-1/3 border-b-2 border-zinc-900 pb-2 space-y-1">
+                                            <div className="flex justify-between items-center text-[13px]">
+                                                <span className="font-bold">Payment:</span>
+                                                <div className="flex gap-4">
+                                                    <span>{selectedSale.market_price_currency || 'USD'} $:</span>
+                                                    <span className="font-bold">{Number(selectedSale.subtotal || 0).toFixed(2)}</span>
+                                                </div>
+                                            </div>
+                                            {Number(selectedSale.currency_rate || 0) > 0 && (
+                                                <div className="flex justify-between items-center text-[13px]">
+                                                    <span className="font-bold opacity-0">Payment:</span>
+                                                    <div className="flex gap-4">
+                                                        <span>{selectedSale.transaction_currency || 'UGX'}:</span>
+                                                        <span className="font-bold">
+                                                            {Math.round(Number(selectedSale.total_ugx || 0) / 1000) * 1000 ? (Math.round(Number(selectedSale.total_ugx || 0) / 1000) * 1000).toLocaleString() : Number(selectedSale.total_ugx || 0).toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+
+                                <div className="mt-32 text-[10px] text-center text-zinc-300 uppercase tracking-[0.4em]">
+                                    Official Digital Protocol • Gold ERP System
+                                </div>
                             </div>
                         </div>
                     </div>
