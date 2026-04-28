@@ -9,7 +9,7 @@ import apiClient from '../../api/axiosConfig';
 import {
     LayoutDashboard,
     Calculator,
-    History,
+    History as HistoryIcon,
     LogOut,
     CheckCircle2,
     DollarSign,
@@ -340,7 +340,7 @@ const POS = () => {
         await saveSaleOffline(lastSavedSale);
 
         if (navigator.onLine) {
-            syncAllData(token).then(() => {
+            syncAllData().then(() => {
                 fetchMySales();
             });
         }
@@ -378,7 +378,7 @@ const POS = () => {
                 height: element.scrollHeight,
                 windowHeight: element.scrollHeight,
                 onclone: (clonedDoc) => {
-                    const clonedElement = clonedDoc.getElementById('receipt-content');
+                    const clonedElement = clonedDoc.getElementById('receipt-content') as HTMLElement;
                     if (clonedElement) {
                         clonedElement.style.overflow = 'visible';
                         clonedElement.style.height = 'auto';
@@ -420,7 +420,7 @@ const POS = () => {
                 <nav className="flex-1 overflow-y-auto px-4 py-8 space-y-2 overflow-x-hidden">
                     <SidebarItem id="overview" label="Daily Stats" icon={LayoutDashboard} activeTab={activeTab} onClick={(id) => { setActiveTab(id); if (window.innerWidth < 1024) setIsSidebarOpen(false); }} />
                     <SidebarItem id="billing" label="Bill Matrix" icon={Calculator} activeTab={activeTab} onClick={(id) => { setActiveTab(id); setIsSidebarOpen(false); }} />
-                    <SidebarItem id="history" label="Sales Logs" icon={History} activeTab={activeTab} onClick={(id) => { setActiveTab(id); if (window.innerWidth < 1024) setIsSidebarOpen(false); }} />
+                    <SidebarItem id="history" label="Sales Logs" icon={HistoryIcon} activeTab={activeTab} onClick={(id) => { setActiveTab(id); if (window.innerWidth < 1024) setIsSidebarOpen(false); }} />
                 </nav>
 
                 <div className="p-8 border-t border-[hsl(var(--border))] overflow-hidden">
@@ -492,7 +492,7 @@ const POS = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                                 {[
                                     { label: 'Today Revenue', value: `$${salesLedger.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}`, icon: TrendingUp, color: 'text-emerald-500' },
-                                    { label: 'Transactions', value: salesLedger.length, icon: History, color: 'text-blue-500' },
+                                    { label: 'Transactions', value: salesLedger.length, icon: HistoryIcon, color: 'text-blue-500' },
                                     { label: 'Avg Purity', value: `${(salesLedger.reduce((acc, s) => acc + Number(s.actual_product_quality), 0) / (salesLedger.length || 1)).toFixed(2)}%`, icon: BarChart3, color: 'text-purple-500' },
                                     { label: 'Spot Gold', value: `$${netPrice.toLocaleString()}`, icon: DollarSign, color: 'text-orange-500' },
                                 ].map((stat, i) => (
@@ -519,7 +519,7 @@ const POS = () => {
                                             <span className="font-black uppercase text-[10px] tracking-[0.2em]">New Bill Matrix</span>
                                         </button>
                                         <button onClick={() => setActiveTab('history')} className="flex flex-col items-center justify-center p-8 bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] rounded-[2rem] gap-4 hover:scale-[1.02] transition-all border border-[hsl(var(--border))]">
-                                            <History size={32} />
+                                            <HistoryIcon size={32} />
                                             <span className="font-black uppercase text-[10px] tracking-[0.2em]">View History</span>
                                         </button>
                                     </div>

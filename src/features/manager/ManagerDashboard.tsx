@@ -20,7 +20,7 @@ import {
     Command,
     Activity,
     UserPlus,
-    History,
+    History as HistoryIcon,
     X,
     FileDown,
     Eye
@@ -665,7 +665,7 @@ const ManagerDashboard = () => {
                                     </div>
                                 </>
 
-                                <div className="mt-32 text-[10px] text-center text-zinc-300 uppercase tracking-[0.4em]">
+                                 <div className="mt-32 text-[10px] text-center text-zinc-300 uppercase tracking-[0.4em]">
                                     Official Digital Protocol • Gold ERP System
                                 </div>
                             </div>

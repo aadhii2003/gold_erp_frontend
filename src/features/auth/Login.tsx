@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '../../app/store';
-import axios from 'axios';
+import apiClient from '../../api/axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { User, Lock, ArrowRight, ShieldCheck, Landmark, Moon, Sun, Eye, EyeOff } from 'lucide-react';
@@ -22,7 +22,7 @@ const Login = () => {
         setLoading(true);
         setError('');
         try {
-            const res = await axios.post('http://127.0.0.1:8000/api/auth/login/', { username, password });
+            const res = await apiClient.post('/auth/login/', { username, password });
             const decoded: any = jwtDecode(res.data.access);
             
             const user = {

@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import type { RootState } from './app/store';
-import { getPendingSales, markSalesSynced } from './db/indexedDB';
-import axios from 'axios';
+import { syncAllData } from './utils/syncManager';
 import { useTheme } from './context/ThemeContext';
 
 const App = () => {
@@ -22,7 +21,7 @@ const App = () => {
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      syncSales();
+      performSync();
     };
     const handleOffline = () => setIsOnline(false);
 
@@ -30,7 +29,7 @@ const App = () => {
     window.addEventListener('offline', handleOffline);
 
     if (isOnline && token) {
-      syncSales();
+      performSync();
     }
 
     return () => {
@@ -39,25 +38,14 @@ const App = () => {
     };
   }, [isOnline, token]);
 
-  const syncSales = async () => {
+  const performSync = async () => {
     if (!token || syncing) return;
     try {
       setSyncing(true);
-      const pendingSales = await getPendingSales();
-      if (pendingSales.length === 0) {
-        setSyncing(false);
-        return;
-      }
-      const response = await axios.post('http://127.0.0.1:8000/api/sales/sync/', { sales: pendingSales }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (response.data.status === 'success') {
-        const syncedIds = pendingSales.map(s => (s as any).id);
-        await markSalesSynced(syncedIds);
-        console.log('Synced', response.data.synced_count, 'sales');
-      }
+      await syncAllData();
+      console.log('Global sync completed from App root');
     } catch (e) {
-      console.error('Error syncing sales', e);
+      console.error('Error during global sync', e);
     } finally {
       setSyncing(false);
     }

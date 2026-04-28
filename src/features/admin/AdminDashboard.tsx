@@ -235,7 +235,7 @@ const AdminDashboard = () => {
                 setUploadProgress({ current: 0, total: formatted.length });
 
                 for (let i = 0; i < formatted.length; i++) {
-                    await axios.post('http://127.0.0.1:8000/api/density-purity/', formatted[i], { headers: { Authorization: `Bearer ${token}` } });
+                    await apiClient.post('/density-purity/', formatted[i]);
                     setUploadProgress({ current: i + 1, total: formatted.length });
                 }
 
