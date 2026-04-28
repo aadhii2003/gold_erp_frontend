@@ -386,11 +386,11 @@ const ManagerDashboard = () => {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="erp-input-group">
                                                 <label className="erp-label">Rate (USD/g)</label>
-                                                <input type="number" placeholder="0.00" value={ratePerGram} onChange={e => setRatePerGram(Number(e.target.value))} className="erp-input" />
+                                                <input type="number" placeholder="0.00" value={ratePerGram} onChange={e => setRatePerGram(e.target.value === '' ? '' : Number(e.target.value))} className="erp-input" />
                                             </div>
                                             <div className="erp-input-group">
                                                 <label className="erp-label">Volume (g)</label>
-                                                <input type="number" placeholder="0.00" value={grams} onChange={e => setGrams(Number(e.target.value))} className="erp-input" />
+                                                <input type="number" placeholder="0.00" value={grams} onChange={e => setGrams(e.target.value === '' ? '' : Number(e.target.value))} className="erp-input" />
                                             </div>
                                         </div>
                                         <div className="p-6 bg-[hsl(var(--muted))] rounded-2xl border border-[hsl(var(--border))] text-center">
