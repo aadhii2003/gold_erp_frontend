@@ -104,7 +104,7 @@ const AdminDashboard = () => {
 
     const fetchAdminLogs = async () => {
         try {
-            const res = await axios.get('http://127.0.0.1:8000/api/admin-logs/', { headers: { Authorization: `Bearer ${token}` } });
+            const res = await axios.get('http://127.0.0.1:8000/api/user-logs/', { headers: { Authorization: `Bearer ${token}` } });
             setAdminLogs(res.data);
         } catch (e) { console.error(e); }
     };
@@ -983,8 +983,9 @@ const AdminDashboard = () => {
                                                                 <div className="w-6 h-6 rounded-lg bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[hsl(var(--primary))]">
                                                                     <Command size={12} />
                                                                 </div>
-                                                                <span className="text-xs font-black uppercase tracking-tight">{log.username}</span>
-                                                            </div>
+                                                                    <p className="text-xs font-black uppercase tracking-tight">{log.username}</p>
+                                                                    <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-widest">{log.role}</p>
+                                                                </div>
                                                         </td>
                                                         <td className="p-6">
                                                             <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${
