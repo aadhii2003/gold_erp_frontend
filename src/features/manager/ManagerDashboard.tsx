@@ -478,9 +478,14 @@ const ManagerDashboard = () => {
                                             </div>
                                             <button onClick={createStaff} className="erp-button-primary w-full">Deploy Terminal Node</button>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
+            </main>
 
-                {/* Sale Bill Overlay */}
+            {/* Sale Bill Overlay */}
                 {selectedSale && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 print:p-0 print:bg-white print:backdrop-blur-none print:static">
                         <div className="bg-white text-zinc-900 w-full max-w-[90rem] h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col print:shadow-none print:border-none print:w-full print:h-auto print:overflow-visible border border-white/20">
@@ -616,7 +621,6 @@ const ManagerDashboard = () => {
                         </div>
                     </div>
                 )}
-            </main>
         </div>
     );
 };

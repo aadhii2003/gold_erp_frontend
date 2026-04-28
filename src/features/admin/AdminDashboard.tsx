@@ -608,7 +608,7 @@ const AdminDashboard = () => {
 
                     {/* Branches Tab Content */}
                     {activeTab === 'branches' && !selectedBranchForManagers && (
-                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-in fade-in duration-500 items-start">
+                        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 animate-in fade-in duration-500 items-start">
                             {/* Left Side: Provision Form (Reduced Width) */}
                             <div className="erp-section">
                                 <div className="erp-section-header">
@@ -645,7 +645,7 @@ const AdminDashboard = () => {
                             </div>
 
                             {/* Right Side: Established Entities (2nd column) */}
-                            <div className="xl:col-span-2 erp-section">
+                            <div className="xl:col-span-3 erp-section">
                                 <div className="erp-section-header">
                                     <h3 className="erp-section-title">Established Entities</h3>
                                 </div>
@@ -755,19 +755,19 @@ const AdminDashboard = () => {
                                                     <p className="text-center py-10 text-[10px] font-black uppercase text-[hsl(var(--muted-foreground))] tracking-widest">No managers assigned.</p>
                                                 ) : (
                                                     usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').map(mgr => (
-                                                        <div key={mgr.id} className="p-6 bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] rounded-3xl flex items-center justify-between group">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className={`w-3 h-3 rounded-full ${mgr.is_active ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`} />
+                                                        <div key={mgr.id} className="p-4 bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] rounded-2xl flex items-center justify-between group">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`w-2.5 h-2.5 rounded-full ${mgr.is_active ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`} />
                                                                 <div>
-                                                                    <p className="text-sm font-black uppercase mb-0.5">{mgr.username}</p>
-                                                                    <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))]">{mgr.email}</p>
+                                                                    <p className="text-xs font-black uppercase mb-0.5">{mgr.username}</p>
+                                                                    <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))]">{mgr.email}</p>
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-2">
-                                                                <button onClick={() => toggleUserStatus(mgr.id)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mgr.is_active ? 'bg-[var(--gold-gradient)] text-black shadow-sm' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'}`}>
+                                                                <button onClick={() => toggleUserStatus(mgr.id)} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${mgr.is_active ? 'bg-[var(--gold-gradient)] text-black shadow-sm' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'}`}>
                                                                     {mgr.is_active ? 'Suspend' : 'Restore'}
                                                                 </button>
-                                                                <button onClick={() => removeUser(mgr.id)} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-all">
+                                                                <button onClick={() => removeUser(mgr.id)} className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-all">
                                                                     Remove
                                                                 </button>
                                                             </div>
@@ -789,19 +789,19 @@ const AdminDashboard = () => {
                                                     <p className="text-center py-10 text-[10px] font-black uppercase text-[hsl(var(--muted-foreground))] tracking-widest">No staff records found.</p>
                                                 ) : (
                                                     usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'STAFF').map(staff => (
-                                                        <div key={staff.id} className="p-6 bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] rounded-3xl flex items-center justify-between group">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className={`w-3 h-3 rounded-full ${staff.is_active ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`} />
+                                                        <div key={staff.id} className="p-4 bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] rounded-2xl flex items-center justify-between group">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`w-2.5 h-2.5 rounded-full ${staff.is_active ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`} />
                                                                 <div>
-                                                                    <p className="text-sm font-black uppercase mb-0.5">{staff.username}</p>
-                                                                    <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))]">{staff.email}</p>
+                                                                    <p className="text-xs font-black uppercase mb-0.5">{staff.username}</p>
+                                                                    <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))]">{staff.email}</p>
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-2">
-                                                                <button onClick={() => toggleUserStatus(staff.id)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${staff.is_active ? 'bg-[var(--gold-gradient)] text-black shadow-sm' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'}`}>
+                                                                <button onClick={() => toggleUserStatus(staff.id)} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${staff.is_active ? 'bg-[var(--gold-gradient)] text-black shadow-sm' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'}`}>
                                                                     {staff.is_active ? 'Suspend' : 'Restore'}
                                                                 </button>
-                                                                <button onClick={() => removeUser(staff.id)} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-all">
+                                                                <button onClick={() => removeUser(staff.id)} className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-all">
                                                                     Remove
                                                                 </button>
                                                             </div>
