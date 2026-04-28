@@ -25,7 +25,8 @@ import {
     X,
     BarChart3,
     ArrowLeftRight,
-    FileDown
+    FileDown,
+    Eye
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -86,6 +87,7 @@ const POS = () => {
     const [paidAmount, setPaidAmount] = useState<number | ''>('');
     const [showReceipt, setShowReceipt] = useState(false);
     const [lastSavedSale, setLastSavedSale] = useState<any>(null);
+    const [isViewingMode, setIsViewingMode] = useState(false);
 
     const [salesLedger, setSalesLedger] = useState<any[]>([]);
 
@@ -213,6 +215,35 @@ const POS = () => {
             created_at: new Date().toISOString()
         };
         setLastSavedSale(sale);
+        setIsViewingMode(false);
+        setShowReceipt(true);
+    };
+
+    const handleViewSale = (saleFromBackend: any) => {
+        const mappedSale = {
+            ...saleFromBackend,
+            client_name: saleFromBackend.vendor,
+            market_price: saleFromBackend.market_price,
+            discount_additions: saleFromBackend.discount_addition,
+            change_currency_rate: saleFromBackend.currency_rate,
+            tola_rate: saleFromBackend.tola_rate,
+            market_currency: saleFromBackend.market_price_currency || 'USD',
+            change_currency: saleFromBackend.transaction_currency || 'USD',
+            subtotal: saleFromBackend.subtotal,
+            total_target_currency: saleFromBackend.total_ugx,
+            products: [
+                {
+                    id: 'product-1',
+                    actualProcessWeight: saleFromBackend.actual_process_weight,
+                    tolaQty: saleFromBackend.qty_tolas,
+                    finalPurity: saleFromBackend.actual_product_quality,
+                    unitPrice: saleFromBackend.unit_price,
+                    subtotal: saleFromBackend.subtotal
+                }
+            ]
+        };
+        setLastSavedSale(mappedSale);
+        setIsViewingMode(true);
         setShowReceipt(true);
     };
 
@@ -640,6 +671,7 @@ const POS = () => {
                                                 <th className="p-6">Subtotal</th>
                                                 <th className="p-6">Paid</th>
                                                 <th className="p-6">Status</th>
+                                                <th className="p-6 text-right">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-[hsl(var(--border))]">
@@ -656,6 +688,15 @@ const POS = () => {
                                                         <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] font-black uppercase tracking-widest border border-emerald-500/20">
                                                             Settled
                                                         </span>
+                                                    </td>
+                                                    <td className="p-6 text-right">
+                                                        <button 
+                                                            onClick={() => handleViewSale(sale)}
+                                                            className="p-3 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] rounded-xl transition-all"
+                                                            title="View Bill"
+                                                        >
+                                                            <Eye size={16} />
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -725,12 +766,14 @@ const POS = () => {
                                     >
                                         <FileDown size={16} /> Download PDF
                                     </button>
-                                    <button
-                                        onClick={handleConfirmAndSave}
-                                        className="px-10 py-4 bg-[var(--gold-primary)] text-black rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.05] transition-all shadow-xl shadow-amber-500/20 flex items-center gap-3"
-                                    >
-                                        <CheckCircle2 size={16} /> Confirm Sale
-                                    </button>
+                                    {!isViewingMode && (
+                                        <button
+                                            onClick={handleConfirmAndSave}
+                                            className="px-10 py-4 bg-[var(--gold-primary)] text-black rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.05] transition-all shadow-xl shadow-amber-500/20 flex items-center gap-3"
+                                        >
+                                            <CheckCircle2 size={16} /> Confirm Sale
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => setShowReceipt(false)}
                                         className="p-4 text-zinc-400 hover:text-red-500 transition-colors"

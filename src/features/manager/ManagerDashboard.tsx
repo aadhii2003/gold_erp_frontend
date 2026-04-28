@@ -22,7 +22,8 @@ import {
     UserPlus,
     History,
     X,
-    FileDown
+    FileDown,
+    Eye
 } from 'lucide-react';
 
 const ManagerDashboard = () => {
@@ -273,7 +274,13 @@ const ManagerDashboard = () => {
                                                     <td className="p-6 font-black uppercase text-[11px]">{s.staff_name}</td>
                                                     <td className="p-6 text-sm font-bold">{s.product_name}</td>
                                                     <td className="p-6 text-right">
-                                                        <button onClick={() => setSelectedSale(s)} className="text-[10px] font-black uppercase tracking-widest text-[var(--gold-primary)] hover:underline">View Bill</button>
+                                                        <button 
+                                                            onClick={() => setSelectedSale(s)} 
+                                                            className="p-3 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] rounded-xl transition-all"
+                                                            title="View Bill"
+                                                        >
+                                                            <Eye size={16} />
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -315,7 +322,13 @@ const ManagerDashboard = () => {
                                                         <p className="text-[10px] text-[hsl(var(--muted-foreground))] font-bold mt-1">{sale.actual_process_weight}g Processed</p>
                                                     </td>
                                                     <td className="p-6 text-right">
-                                                        <button onClick={() => setSelectedSale(sale)} className="text-[10px] font-black uppercase tracking-widest text-[var(--gold-primary)] hover:underline">View Bill</button>
+                                                        <button 
+                                                            onClick={() => setSelectedSale(sale)} 
+                                                            className="p-3 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] rounded-xl transition-all"
+                                                            title="View Bill"
+                                                        >
+                                                            <Eye size={16} />
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             ))}

@@ -33,7 +33,8 @@ import {
     Loader2,
     Info,
     RefreshCw,
-    History as HistoryIcon
+    History as HistoryIcon,
+    Eye
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -590,9 +591,10 @@ const AdminDashboard = () => {
                                                         <td className="p-4 text-right">
                                                             <button
                                                                 onClick={() => setSelectedSale(sale)}
-                                                                className="text-[10px] font-black uppercase tracking-widest text-[var(--gold-primary)] hover:underline"
+                                                                className="p-3 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] rounded-xl transition-all"
+                                                                title="View Bill"
                                                             >
-                                                                View Bill
+                                                                <Eye size={16} />
                                                             </button>
                                                         </td>
                                                     </tr>
