@@ -390,17 +390,33 @@ const POS = () => {
                     -moz-appearance: textfield;
                 }
                 @media print {
+                    /* Hide everything by default */
                     body * {
                         visibility: hidden;
                     }
-                    #receipt-content, #receipt-content * {
+                    /* Show the receipt modal and its children */
+                    #receipt-modal-container, #receipt-modal-container * {
                         visibility: visible;
                     }
+                    /* Reset positioning for print */
+                    #receipt-modal-container {
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 100% !important;
+                        height: auto !important;
+                        display: block !important;
+                        background: white !important;
+                    }
+                    /* Ensure scrollable areas expand */
                     #receipt-content {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
+                        overflow: visible !important;
+                        height: auto !important;
+                    }
+                    /* Force white background and black text */
+                    * {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
                     }
                     .no-print {
                         display: none !important;
@@ -859,8 +875,8 @@ const POS = () => {
 
                 {/* Receipt Modal Overlay */}
                 {showReceipt && lastSavedSale && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 print:p-0 print:bg-white print:backdrop-blur-none print:static">
-                        <div className="bg-white text-zinc-900 w-full max-w-[90rem] h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col print:shadow-none print:border-none print:w-full print:h-auto print:overflow-visible border border-white/20">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 print:p-0 print:bg-white print:backdrop-blur-none print:block print:static">
+                        <div id="receipt-modal-container" className="bg-white text-zinc-900 w-full max-w-[90rem] h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col print:shadow-none print:border-none print:w-full print:h-auto print:rounded-none print:overflow-visible border border-white/20">
                             {/* Modal Actions */}
                             <div className="p-8 bg-zinc-50 border-b flex justify-between items-center print:hidden">
                                 <div>
