@@ -63,24 +63,25 @@ const POS = () => {
     const [filingDate, setFilingDate] = useState(new Date().toISOString().split('T')[0]);
     const [marketCurrency, setMarketCurrency] = useState('USD');
     const [marketPrice, setMarketPrice] = useState<number | ''>('');
+    const [marketPriceUnit, setMarketPriceUnit] = useState('oz');
     const [discountAdditions, setDiscountAdditions] = useState<number | ''>(0);
-    const [materialUnitInput, setMaterialUnitInput] = useState('Grams');
-    const [changeCurrency, setChangeCurrency] = useState('AED');
-    const [changeCurrencyRate, setChangeCurrencyRate] = useState<number | ''>(3850);
+    const [materialUnitInput, setMaterialUnitInput] = useState('g');
+    const [changeCurrency, setChangeCurrency] = useState('UGX');
+    const [changeCurrencyRate, setChangeCurrencyRate] = useState<number | ''>(0);
     const [taxes, setTaxes] = useState<number | ''>(0);
 
     // Product Section
     const [products, setProducts] = useState<any[]>([
         {
             id: uuidv4(),
-            productName: 'Gold Bar',
-            description: 'Premium Quality',
+            productName: 'RM',
+            description: 'RM',
             grossWeight: '',
             actualProcessWeight: '',
             secondProcessWeight: '',
             manualFirstProcess: '',
             manualPurity: '',
-            uom: 'Tola',
+            uom: 'g',
             taxes: 0
         }
     ]);
@@ -94,6 +95,64 @@ const POS = () => {
     useEffect(() => {
         fetchMySales();
         fetchConstants();
+    }, []);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+
+            if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'number') {
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                }
+            }
+
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                if (target.tagName === 'INPUT' || target.tagName === 'SELECT') {
+                    if (target.tagName === 'INPUT') {
+                        const input = target as HTMLInputElement;
+                        if (input.type === 'text') {
+                            if (e.key === 'ArrowLeft' && input.selectionStart !== 0) return;
+                            if (e.key === 'ArrowRight' && input.selectionEnd !== input.value.length) return;
+                        }
+                    }
+
+                    const inputs = Array.from(document.querySelectorAll('input:not([disabled]):not([readonly]), select:not([disabled])')).filter(el => {
+                        const htmlEl = el as HTMLElement;
+                        return htmlEl.offsetWidth > 0 || htmlEl.offsetHeight > 0;
+                    });
+
+                    const currentIndex = inputs.indexOf(target as Element);
+
+                    if (currentIndex !== -1) {
+                        let nextIndex = e.key === 'ArrowRight' ? currentIndex + 1 : currentIndex - 1;
+                        if (nextIndex >= 0 && nextIndex < inputs.length) {
+                            e.preventDefault();
+                            const nextElement = inputs[nextIndex] as HTMLElement;
+                            nextElement.focus();
+                            if (nextElement.tagName === 'INPUT') {
+                                try { (nextElement as HTMLInputElement).select(); } catch (err) { }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        const handleWheel = (e: WheelEvent) => {
+            const target = e.target as HTMLElement;
+            if (document.activeElement === target && target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'number') {
+                e.preventDefault();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('wheel', handleWheel, { passive: false });
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('wheel', handleWheel);
+        };
     }, []);
 
     const fetchConstants = async () => {
@@ -127,14 +186,14 @@ const POS = () => {
     const addProduct = () => {
         setProducts([...products, {
             id: uuidv4(),
-            productName: 'New Product',
-            description: '',
+            productName: 'RM',
+            description: 'RM',
             grossWeight: '',
             actualProcessWeight: '',
             secondProcessWeight: '',
             manualFirstProcess: '',
             manualPurity: '',
-            uom: 'Tola',
+            uom: 'g',
             taxes: 0
         }]);
     };
@@ -196,12 +255,16 @@ const POS = () => {
     const totalSubtotal = computedProducts.reduce((acc, p) => acc + p.subtotal, 0);
     const subtotal = totalSubtotal;
     const balance = totalSubtotal - (paidAmount !== '' ? Number(paidAmount) : 0);
-    const totalTargetCurrency = Math.round((totalSubtotal * Number(changeCurrencyRate || 1)));
+    const rawTargetCurrency = totalSubtotal * (changeCurrencyRate !== '' ? Number(changeCurrencyRate) : 1);
+    const targetCurrencyStr = rawTargetCurrency.toString().split('.');
+    const totalTargetCurrency = Number(targetCurrencyStr[0] + '.' + (targetCurrencyStr[1] ? targetCurrencyStr[1].padEnd(2, '0').slice(0, 2) : '00'));
 
     const handlePreview = () => {
         if (computedProducts.some(p => p.weightToUse === 0)) return alert('All products must have weight');
+        const newId = uuidv4();
         const sale = {
-            id: uuidv4(),
+            id: newId,
+            bill_number: `PN${newId.split('-')[0].toUpperCase()}`,
             client_name: clientName,
             filing_date: filingDate,
             market_currency: marketCurrency,
@@ -209,7 +272,8 @@ const POS = () => {
             discount_additions: Number(discountAdditions),
             net_price: netPrice,
             tola_rate: tolaRate,
-            material_unit: materialUnitInput,
+            material_unit_input: materialUnitInput,
+            market_price_unit: marketPriceUnit,
             change_currency: changeCurrency,
             change_currency_rate: Number(changeCurrencyRate),
             x_factor: branchXFactor,
@@ -266,14 +330,14 @@ const POS = () => {
         setProducts([
             {
                 id: uuidv4(),
-                productName: 'Gold Bar',
-                description: 'Premium Quality',
+                productName: 'RM',
+                description: 'RM',
                 grossWeight: '',
                 actualProcessWeight: '',
                 secondProcessWeight: '',
                 manualFirstProcess: '',
                 manualPurity: '',
-                uom: 'Tola',
+                uom: 'g',
                 taxes: 0
             }
         ]);
@@ -316,6 +380,33 @@ const POS = () => {
 
     return (
         <div className="flex h-screen bg-[hsl(var(--background))] font-sans overflow-hidden transition-all duration-300">
+            <style>{`
+                input[type=number]::-webkit-inner-spin-button, 
+                input[type=number]::-webkit-outer-spin-button { 
+                    -webkit-appearance: none; 
+                    margin: 0; 
+                }
+                input[type=number] {
+                    -moz-appearance: textfield;
+                }
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    #receipt-content, #receipt-content * {
+                        visibility: visible;
+                    }
+                    #receipt-content {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                    }
+                    .no-print {
+                        display: none !important;
+                    }
+                }
+            `}</style>
             <aside
                 className={`fixed lg:relative z-[60] h-full flex flex-col bg-[hsl(var(--card))] no-print transition-all duration-500 ease-in-out shadow-2xl lg:shadow-none overflow-hidden ${isSidebarOpen
                     ? 'w-72 translate-x-0 border-r border-[hsl(var(--border))] pointer-events-auto'
@@ -487,12 +578,19 @@ const POS = () => {
                                         <select value={marketCurrency} onChange={e => setMarketCurrency(e.target.value)} className="erp-input text-xl py-5">
                                             <option value="USD">USD</option>
                                             <option value="AED">AED</option>
-                                            <option value="EUR">EUR</option>
+                                            <option value="UGX">UGX</option>
                                         </select>
                                     </div>
                                     <div className="erp-input-group">
-                                        <label className="erp-label">Market Price</label>
-                                        <input type="number" value={marketPrice} onChange={e => setMarketPrice(e.target.value as any)} className="erp-input text-xl font-black py-5" placeholder="1800" />
+                                        <label className="erp-label">Market Price & Unit</label>
+                                        <div className="flex gap-2">
+                                            <input type="number" value={marketPrice} onChange={e => setMarketPrice(e.target.value as any)} className="erp-input flex-1 text-xl font-black py-5" placeholder="1800" />
+                                            <select value={marketPriceUnit} onChange={e => setMarketPriceUnit(e.target.value)} className="erp-input w-24 text-sm font-bold">
+                                                <option value="oz">oz</option>
+                                                <option value="g">g</option>
+                                                <option value="kg">kg</option>
+                                            </select>
+                                        </div>
                                     </div>
                                     <div className="erp-input-group">
                                         <label className="erp-label">Discount/Additions</label>
@@ -505,20 +603,20 @@ const POS = () => {
                                     <div className="erp-input-group">
                                         <label className="erp-label">Material Unit Input</label>
                                         <select value={materialUnitInput} onChange={e => setMaterialUnitInput(e.target.value)} className="erp-input text-xl py-5">
-                                            <option value="Grams">Grams</option>
-                                            <option value="Tolas">Tolas</option>
+                                            <option value="g">g</option>
+                                            <option value="t">t</option>
                                         </select>
                                     </div>
                                     <div className="erp-input-group">
                                         <label className="erp-label">Change Currency</label>
                                         <select value={changeCurrency} onChange={e => setChangeCurrency(e.target.value)} className="erp-input text-xl py-5">
-                                            <option value="AED">UGX</option>
-                                            <option value="UGX">ADE</option>
+                                            <option value="UGX">UGX</option>
+                                            <option value="AED">AED</option>
                                             <option value="USD">USD</option>
                                         </select>
                                     </div>
                                     <div className="erp-input-group">
-                                        <label className="erp-label">Forex Rate(if needed in bill)</label>
+                                        <label className="erp-label">Forex Rate(needed in bill)</label>
                                         <input type="number" value={changeCurrencyRate} onChange={e => setChangeCurrencyRate(e.target.value as any)} className="erp-input text-xl font-black py-5" placeholder="3850" />
                                     </div>
                                     <div className="erp-input-group">
@@ -593,7 +691,7 @@ const POS = () => {
                                                 {/* Col 3: Weights 2 */}
                                                 <div className="space-y-6">
                                                     <div className="erp-input-group">
-                                                        <label className="erp-label text-[9px]">Actual Process Weight</label>
+                                                        <label className="erp-label text-[9px]">Actual Process Wt</label>
                                                         <input type="number" value={p.actualProcessWeight} onChange={e => updateProduct(p.id, 'actualProcessWeight', e.target.value as any)} className="erp-input text-lg font-black py-4" placeholder="0" />
                                                     </div>
                                                     <div className="erp-input-group">
@@ -605,7 +703,7 @@ const POS = () => {
                                                 {/* Col 4: Scientific 1 */}
                                                 <div className="space-y-6">
                                                     <div className="erp-input-group">
-                                                        <label className="erp-label text-[9px]">Second Process Weight</label>
+                                                        <label className="erp-label text-[9px]">Second Process Wt</label>
                                                         <input type="number" value={p.secondProcessWeight} onChange={e => updateProduct(p.id, 'secondProcessWeight', e.target.value as any)} className="erp-input text-lg font-black py-4" placeholder="0" />
                                                     </div>
                                                     {/* <div className="erp-input-group">
@@ -621,8 +719,8 @@ const POS = () => {
                                                     <div className="erp-input-group">
                                                         <label className="erp-label">UOM</label>
                                                         <select value={p.uom} onChange={e => updateProduct(p.id, 'uom', e.target.value)} className="erp-input text-sm py-4">
-                                                            <option value="Tola">Tola</option>
-                                                            <option value="Gram">Gram</option>
+                                                            <option value="g">g</option>
+                                                            <option value="t">t</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -659,7 +757,7 @@ const POS = () => {
                                                     </div>
                                                     <div className="erp-input-group">
                                                         <label className="erp-label font-bold text-[hsl(var(--primary))]">Subtotal</label>
-                                                        <div className="erp-input bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] text-lg font-black py-4">${p.subtotal.toFixed(2)}</div>
+                                                        <div className="erp-input bg-[hsl(var(--muted))] text-lg font-black py-4">${p.subtotal.toFixed(2)}</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -749,7 +847,7 @@ const POS = () => {
                                 <div className="flex flex-col items-end">
                                     <span className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">Net Payable ({marketCurrency})</span>
                                     <span className="text-3xl font-black text-[hsl(var(--foreground))] leading-none tracking-tighter">${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                    {changeCurrencyRate !== '' && <p className="text-[10px] font-bold mt-1 text-emerald-600">{totalTargetCurrency.toLocaleString()} {changeCurrency} Equivalent</p>}
+                                    {changeCurrencyRate !== '' && <p className="text-[10px] font-bold mt-1 text-emerald-600">{totalTargetCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {changeCurrency} Equivalent</p>}
                                 </div>
                                 <button onClick={handlePreview} className="erp-button-primary scale-110">
                                     <CheckCircle2 size={18} /> Preview & Finalize
@@ -814,8 +912,12 @@ const POS = () => {
                                                     <span>{lastSavedSale.created_at ? new Date(lastSavedSale.created_at).toLocaleDateString('en-GB') : '---'}</span>
                                                 </div>
                                                 <div className="flex gap-4 justify-end">
+                                                    <span className="font-bold">Time:</span>
+                                                    <span>{lastSavedSale.created_at ? new Date(lastSavedSale.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }) : '---'}</span>
+                                                </div>
+                                                <div className="flex gap-4 justify-end">
                                                     <span className="font-bold">PO#:</span>
-                                                    <span className="font-mono">PN{lastSavedSale.id ? lastSavedSale.id.split('-')[0].toUpperCase() : '---'}</span>
+                                                    <span className="font-mono">{lastSavedSale.bill_number || `PN${String(lastSavedSale.id || '').split('-')[0].toUpperCase()}`}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -896,7 +998,7 @@ const POS = () => {
                                                         <div className="flex gap-4">
                                                             <span>{lastSavedSale.change_currency}:</span>
                                                             <span className="font-bold">
-                                                                {Math.round(Number(lastSavedSale.total_target_currency || 0) / 1000) * 1000 ? (Math.round(Number(lastSavedSale.total_target_currency || 0) / 1000) * 1000).toLocaleString() : Number(lastSavedSale.total_target_currency || 0).toLocaleString()}
+                                                                {Number(lastSavedSale.total_target_currency || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                             </span>
                                                         </div>
                                                     </div>
