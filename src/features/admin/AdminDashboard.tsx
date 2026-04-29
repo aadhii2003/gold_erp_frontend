@@ -34,16 +34,19 @@ import {
     Info,
     RefreshCw,
     History as HistoryIcon,
-    Eye
+    Eye,
+    Clock,
+    CheckCircle2,
+    XCircle
 } from 'lucide-react';
-import { 
+import {
     saveBranchesOffline, getBranchesOffline,
     saveUsersOffline, getUsersOffline,
     saveExpensesOffline, getExpensesOffline,
     saveLogsOffline, getLogsOffline,
     saveGlobalSalesOffline, getGlobalSalesOffline,
     saveMatrixOffline, getMatrixOffline,
-    queueAction, getPendingActions
+    queueAction, getPendingActions, getPendingSales
 } from '../../db/indexedDB';
 import { syncAllData } from '../../utils/syncManager';
 
@@ -52,9 +55,10 @@ const AdminDashboard = () => {
     const { theme, toggleTheme } = useTheme();
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    
+
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [pendingActions, setPendingActions] = useState<any[]>([]);
+    const [pendingSales, setPendingSales] = useState<any[]>([]);
 
     const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -141,8 +145,8 @@ const AdminDashboard = () => {
             const res = await apiClient.get('/user-logs/');
             setAdminLogs(res.data);
             await saveLogsOffline(res.data);
-        } catch (e) { 
-            console.error(e); 
+        } catch (e) {
+            console.error(e);
             const offlineLogs = await getLogsOffline();
             if (offlineLogs.length > 0) setAdminLogs(offlineLogs);
         }
@@ -162,8 +166,8 @@ const AdminDashboard = () => {
             const res = await apiClient.get('/expenses/');
             setExpenses(res.data);
             await saveExpensesOffline(res.data);
-        } catch (e) { 
-            console.error(e); 
+        } catch (e) {
+            console.error(e);
             const offlineExpenses = await getExpensesOffline();
             if (offlineExpenses.length > 0) setExpenses(offlineExpenses);
         }
@@ -174,8 +178,8 @@ const AdminDashboard = () => {
             const res = await apiClient.get('/density-purity/');
             setMatrixList(res.data);
             await saveMatrixOffline(res.data);
-        } catch (e) { 
-            console.error(e); 
+        } catch (e) {
+            console.error(e);
             const offlineMatrix = await getMatrixOffline();
             if (offlineMatrix.length > 0) setMatrixList(offlineMatrix);
         }
@@ -231,7 +235,7 @@ const AdminDashboard = () => {
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
                 const data = XLSX.utils.sheet_to_json(ws);
-                
+
                 const formatted = data.map((row: any) => ({
                     density: Number(row.Density || row.density),
                     purity: Number(row.Purity || row.purity)
@@ -241,7 +245,7 @@ const AdminDashboard = () => {
                     setIsUploading(false);
                     return alert('No valid data found in the file.');
                 }
-                
+
                 setUploadProgress({ current: 0, total: formatted.length });
 
                 for (let i = 0; i < formatted.length; i++) {
@@ -251,7 +255,7 @@ const AdminDashboard = () => {
 
                 alert(`Successfully uploaded ${formatted.length} entries!`);
                 fetchMatrix();
-            } catch(err) {
+            } catch (err) {
                 alert('Error processing file. Ensure it is a valid Excel format.');
             } finally {
                 setIsUploading(false);
@@ -278,8 +282,8 @@ const AdminDashboard = () => {
             const res = await apiClient.get('/branches/');
             setBranches(res.data);
             await saveBranchesOffline(res.data);
-        } catch (e) { 
-            console.error(e); 
+        } catch (e) {
+            console.error(e);
             const offlineBranches = await getBranchesOffline();
             if (offlineBranches.length > 0) setBranches(offlineBranches);
         }
@@ -290,8 +294,8 @@ const AdminDashboard = () => {
             const res = await apiClient.get('/users/');
             setUsersList(res.data);
             await saveUsersOffline(res.data);
-        } catch (e) { 
-            console.error(e); 
+        } catch (e) {
+            console.error(e);
             const offlineUsers = await getUsersOffline();
             if (offlineUsers.length > 0) setUsersList(offlineUsers);
         }
@@ -302,11 +306,14 @@ const AdminDashboard = () => {
             const res = await apiClient.get('/sales/');
             setAllSales(res.data);
             await saveGlobalSalesOffline(res.data);
-        } catch (e) { 
-            console.error(e); 
+        } catch (e) {
+            console.error(e);
             const offlineSales = await getGlobalSalesOffline();
             if (offlineSales.length > 0) setAllSales(offlineSales);
         }
+
+        const pending = await getPendingSales();
+        setPendingSales(pending);
     };
 
     const updateRates = async () => {
@@ -324,7 +331,7 @@ const AdminDashboard = () => {
 
         try {
             await apiClient.post('/gold-rates/update/', payload);
-            
+
             if (autoGoldPrice) setGoldPrice(autoGoldPrice);
             dispatch(setRates({ gold_price: autoGoldPrice || goldPrice, forex_rate: forexRate }));
             setShowGlobalSyncNotify(false);
@@ -356,7 +363,7 @@ const AdminDashboard = () => {
             fetchBranches();
             fetchAdminLogs();
             alert('New branch established.');
-        } catch (e: any) { 
+        } catch (e: any) {
             const errorMsg = e.response?.data ? JSON.stringify(e.response.data) : 'Branch creation failed.';
             alert(`Error: ${errorMsg}`);
         }
@@ -404,7 +411,7 @@ const AdminDashboard = () => {
             fetchUsers();
             fetchAdminLogs();
             alert('Branch Manager provisioned.');
-        } catch (e: any) { 
+        } catch (e: any) {
             const errorMsg = e.response?.data ? JSON.stringify(e.response.data) : 'Provisioning failed.';
             alert(`Error: ${errorMsg}`);
         }
@@ -455,6 +462,17 @@ const AdminDashboard = () => {
         </button>
     );
 
+    const updateExpenseStatus = async (id: number, status: string) => {
+        if (!window.confirm(`Mark this expense as ${status.toLowerCase()}?`)) return;
+        try {
+            await apiClient.patch(`/expenses/${id}/status/`, { status });
+            fetchExpenses();
+            alert(`Expense ${status.toLowerCase()} successfully.`);
+        } catch (e) {
+            alert('Status update failed.');
+        }
+    };
+
     return (
         <div className="flex h-screen bg-[hsl(var(--background))] font-sans overflow-hidden transition-all duration-300">
             {/* Sidebar */}
@@ -474,7 +492,7 @@ const AdminDashboard = () => {
                 <nav className="flex-1 overflow-y-auto px-4 py-8 space-y-2">
                     <NavItem id="dashboard" label="Performance" icon={LayoutDashboard} />
                     <NavItem id="sales" label="Sales Ledger" icon={ReceiptText} />
-                    <NavItem id="branches" label="Entity Management" icon={Store} />
+                    <NavItem id="branches" label="Branch Management" icon={Store} />
                     <NavItem id="expenses" label="Global Expenses" icon={Wallet} />
                     <NavItem id="matrix" label="Purity Matrix" icon={Activity} />
                     <NavItem id="logs" label="System Logs" icon={HistoryIcon} />
@@ -510,11 +528,11 @@ const AdminDashboard = () => {
                     <div className="flex items-center gap-6">
                         <div className="px-6 h-14 flex items-center border border-[hsl(var(--border))] rounded-2xl bg-[hsl(var(--muted)/0.3)]">
                             <h2 className="text-lg font-black uppercase tracking-tighter text-[hsl(var(--foreground))]">
-                                Central Intelligence Control
+                                Admin Control Panel
                             </h2>
                         </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-6 mr-6 border-r border-[hsl(var(--border))] pr-6">
                             <div className="text-right">
@@ -572,7 +590,7 @@ const AdminDashboard = () => {
                                                 <div className="erp-input-group">
                                                     <div className="flex justify-between items-center mb-1">
                                                         <label className="erp-label !mb-0">Spot Gold Price (USD/OZ)</label>
-                                                        <button 
+                                                        <button
                                                             onClick={fetchLiveGoldPrice}
                                                             className="flex items-center gap-1.5 text-[9px] font-black uppercase text-[hsl(var(--primary))] hover:opacity-70 transition-all"
                                                         >
@@ -692,27 +710,43 @@ const AdminDashboard = () => {
                                     <table className="w-full border-collapse">
                                         <thead className="bg-[hsl(var(--muted))] text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border-b border-[hsl(var(--border))]">
                                             <tr>
-                                                <th className="px-10 py-6 text-left">Timestamp</th>
-                                                <th className="px-10 py-6 text-left">Branch</th>
-                                                <th className="px-10 py-6 text-left">Vendor</th>
-                                                <th className="px-10 py-6 text-left">Purity</th>
-                                                <th className="px-10 py-6 text-left">Weight (g)</th>
-                                                <th className="px-10 py-6 text-left">Settlement (USD)</th>
-                                                <th className="px-10 py-6 text-right">Actions</th>
+                                                <th className="px-6 py-4 text-left">Timestamp</th>
+                                                <th className="px-6 py-4 text-left">Branch</th>
+                                                <th className="px-6 py-4 text-left">Vendor</th>
+                                                <th className="px-6 py-4 text-left">Purity</th>
+                                                <th className="px-6 py-4 text-left">Weight (g)</th>
+                                                <th className="px-6 py-4 text-left">Subtotal (USD)</th>
+                                                <th className="px-6 py-4 text-left">Auditor</th>
+                                                <th className="px-6 py-4 text-right">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                                {allSales
+                                            {[
+                                                ...pendingSales.map(s => ({ ...s, isPending: true })),
+                                                ...allSales
+                                            ]
                                                 .filter(s => salesFilterBranch === 'All Branches' || s.branch_name === salesFilterBranch)
                                                 .map(sale => (
                                                     <tr key={sale.id} className="border-b border-[hsl(var(--border))] last:border-0 hover:bg-[hsl(var(--muted)/0.3)] transition-colors group">
-                                                        <td className="px-10 py-6 font-mono text-[11px] text-[hsl(var(--muted-foreground))]">{new Date(sale.created_at).toLocaleString()}</td>
-                                                        <td className="px-10 py-6 font-black uppercase text-[11px]">{sale.branch_name || 'Global'}</td>
-                                                        <td className="px-10 py-6 text-[13px] font-black uppercase tracking-tight">{sale.vendor}</td>
-                                                        <td className="px-10 py-6 font-mono text-[13px] text-emerald-600 font-black">{sale.actual_product_quality}%</td>
-                                                        <td className="px-10 py-6 font-mono text-[13px] font-black">{sale.actual_process_weight}g</td>
-                                                        <td className="px-10 py-6 font-black text-sm">${Number(sale.paid_amount).toLocaleString()}</td>
-                                                        <td className="px-10 py-6 text-right">
+                                                        <td className="px-6 py-4 font-mono text-[11px] text-[hsl(var(--muted-foreground))]">
+                                                            <div className="flex flex-col gap-1">
+                                                                <span>{new Date(sale.created_at || sale.filing_date).toLocaleString()}</span>
+                                                                {sale.isPending && (
+                                                                    <span className="flex items-center gap-1 text-[9px] font-black uppercase text-amber-500">
+                                                                        <Clock size={8} /> Sync Pending
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 font-black uppercase text-[11px]">{sale.branch_name || 'Local'}</td>
+                                                        <td className="px-6 py-4 text-[13px] font-black uppercase tracking-tight">{sale.vendor || sale.client_name}</td>
+                                                        <td className="px-6 py-4 font-mono text-[13px] text-emerald-600 font-black">{sale.actual_product_quality || (sale.products?.[0]?.finalPurity)}%</td>
+                                                        <td className="px-6 py-4 font-mono text-[13px] font-black">{sale.actual_process_weight || (sale.products?.[0]?.actualProcessWeight)}g</td>
+                                                        <td className="px-6 py-4 font-black text-sm">${Number(sale.subtotal).toLocaleString()}</td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-widest">{sale.staff_name || 'System'}</span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
                                                             <button
                                                                 onClick={() => setSelectedSale(sale)}
                                                                 className="p-4 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.1)] rounded-2xl transition-all"
@@ -736,11 +770,11 @@ const AdminDashboard = () => {
                             {/* Left Side: Provision Form (Reduced Width) */}
                             <div className="erp-section">
                                 <div className="erp-section-header">
-                                    <h3 className="erp-section-title">Provision New Entity</h3>
+                                    <h3 className="erp-section-title">Add New Branch</h3>
                                 </div>
                                 <div className="erp-section-content space-y-8">
                                     <div className="erp-input-group">
-                                        <label className="erp-label">Entity Name</label>
+                                        <label className="erp-label">Branch Name</label>
                                         <input
                                             type="text"
                                             placeholder="e.g. Branch Alpha"
@@ -771,20 +805,35 @@ const AdminDashboard = () => {
                             {/* Right Side: Established Entities (2nd column) */}
                             <div className="xl:col-span-3 erp-section">
                                 <div className="erp-section-header">
-                                    <h3 className="erp-section-title">Established Entities</h3>
+                                    <h3 className="erp-section-title">Active Branches</h3>
                                 </div>
                                 <div className="erp-section-content">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {branches.map(branch => (
+                                        {[
+                                            ...pendingActions
+                                                .filter(a => a.type === 'CREATE_BRANCH')
+                                                .map(a => ({ ...a.payload, id: a.id, isPending: true })),
+                                            ...branches
+                                        ].map(branch => (
                                             <div key={branch.id} className="p-6 bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] rounded-3xl flex flex-col gap-4 group transition-all">
                                                 <div className="flex items-center justify-between">
                                                     <div>
-                                                        <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">Entity Name</p>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest">Entity Name</p>
+                                                            {branch.isPending && (
+                                                                <span className="text-[8px] font-black uppercase text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                                                    <Clock size={8} /> Pending
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <p className="text-sm font-black uppercase">{branch.name}</p>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">Efficiency</p>
-                                                        <p className="text-sm font-mono font-bold">{branch.x_factor}%</p>
+                                                        <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">Efficiency / Auditor</p>
+                                                        <div className="flex flex-col items-end">
+                                                            <p className="text-sm font-mono font-bold">{branch.x_factor}%</p>
+                                                            <p className="text-[9px] font-black text-[hsl(var(--primary))] uppercase tracking-tighter opacity-70">By: {branch.created_by_name || 'System'}</p>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-3 pt-2">
@@ -794,12 +843,14 @@ const AdminDashboard = () => {
                                                     >
                                                         Manage
                                                     </button>
-                                                    <button
-                                                        onClick={() => deleteBranch(branch.id)}
-                                                        className="py-2.5 bg-red-500/10 text-red-600 border border-red-500/20 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-500 hover:text-white transition-all text-center"
-                                                    >
-                                                        Remove
-                                                    </button>
+                                                    {!branch.isPending && (
+                                                        <button
+                                                            onClick={() => deleteBranch(branch.id)}
+                                                            className="py-2.5 bg-red-500/10 text-red-600 border border-red-500/20 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-500 hover:text-white transition-all text-center"
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
@@ -815,125 +866,211 @@ const AdminDashboard = () => {
                     )}
 
                     {activeTab === 'branches' && selectedBranchForManagers && (
-                        <div className="space-y-8 animate-in fade-in zoom-in duration-500">
-                            <button 
-                                onClick={() => setSelectedBranchForManagers(null)}
-                                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-all group"
-                            >
-                                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-                                Return to Entity Registry
-                            </button>
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {/* Header / Navigation */}
+                            <div className="flex items-center justify-between bg-[hsl(var(--card))] p-6 rounded-3xl border border-[hsl(var(--border))] shadow-sm">
+                                <div className="flex items-center gap-6">
+                                    <button
+                                        onClick={() => setSelectedBranchForManagers(null)}
+                                        className="p-3 bg-[hsl(var(--muted))] hover:bg-[hsl(var(--border))] rounded-2xl transition-all group"
+                                        title="Return to Registry"
+                                    >
+                                        <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+                                    </button>
+                                    <div>
+                                        <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-[0.2em] mb-1">Branch Intelligence</p>
+                                        <h2 className="text-2xl font-black uppercase tracking-tight">{selectedBranchForManagers.name}</h2>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="px-6 py-3 bg-[hsl(var(--muted)/0.5)] rounded-2xl border border-[hsl(var(--border))]">
+                                        <p className="text-[9px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-0.5">Efficiency Rating</p>
+                                        <p className="text-lg font-black font-mono text-[hsl(var(--primary))]">{selectedBranchForManagers.x_factor}%</p>
+                                    </div>
+                                </div>
+                            </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                {/* Left Side: Details & Manager Form */}
-                                <div className="space-y-8">
-                                    <div className="erp-section border-l-4 border-black dark:border-white">
-                                        <div className="erp-section-header">
-                                            <h3 className="erp-section-title">Branch Intelligence</h3>
+                            {/* Top Section: Registration Protocol */}
+                            <div className="erp-section">
+                                <div className="erp-section-header bg-[hsl(var(--primary)/0.05)]">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 bg-[hsl(var(--primary))] rounded-lg flex items-center justify-center text-[hsl(var(--primary-foreground))]">
+                                            <UserPlus size={16} />
                                         </div>
-                                        <div className="erp-section-content space-y-3">
-                                            <div className="bg-[hsl(var(--muted)/0.5)] p-4 rounded-2xl">
-                                                <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">Entity Identity</p>
-                                                <p className="text-lg font-black uppercase">{selectedBranchForManagers.name}</p>
-                                                <div className="mt-2 flex items-center gap-4">
-                                                    <div className="px-3 py-1 bg-white/50 dark:bg-black/20 rounded-full border border-[hsl(var(--border))]">
-                                                        <span className="text-[10px] font-black font-mono">{selectedBranchForManagers.x_factor}% X-FACTOR</span>
+                                        <h3 className="erp-section-title">Provision Branch Manager</h3>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-widest">Admin Authorization Required</span>
+                                </div>
+                                <div className="erp-section-content">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 items-end">
+                                        <div className="erp-input-group">
+                                            <label className="erp-label">Access Identity</label>
+                                            <input
+                                                type="text"
+                                                value={newManagerUsername}
+                                                onChange={e => setNewManagerUsername(e.target.value)}
+                                                className="erp-input h-12"
+                                                placeholder="e.g. manager_alpha"
+                                            />
+                                        </div>
+                                        <div className="erp-input-group">
+                                            <label className="erp-label">Communication Node (Email)</label>
+                                            <input
+                                                type="email"
+                                                value={newManagerEmail}
+                                                onChange={e => setNewManagerEmail(e.target.value)}
+                                                className="erp-input h-12"
+                                                placeholder="m@branch.com"
+                                            />
+                                        </div>
+                                        <div className="erp-input-group">
+                                            <label className="erp-label">Security Protocol (Password)</label>
+                                            <input
+                                                type="password"
+                                                value={newManagerPassword}
+                                                onChange={e => setNewManagerPassword(e.target.value)}
+                                                className="erp-input h-12"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={createManager}
+                                            className="h-12 bg-[var(--gold-gradient)] text-black font-black rounded-2xl shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest text-[10px]"
+                                        >
+                                            Establish Manager
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Personnel Grid */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                {/* Left Column: Managers */}
+                                <div className="erp-section">
+                                    <div className="erp-section-header bg-amber-500/5">
+                                        <div className="flex items-center gap-3">
+                                            <ShieldCheck size={18} className="text-amber-500" />
+                                            <h3 className="erp-section-title">Authorized Managers</h3>
+                                        </div>
+                                        <span className="text-[10px] font-black text-amber-600 bg-amber-500/10 px-2 py-1 rounded">Primary Control</span>
+                                    </div>
+                                    <div className="erp-section-content space-y-4">
+                                        {(() => {
+                                            const synced = usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER');
+                                            const pending = pendingActions
+                                                .filter(a => a.type === 'CREATE_STAFF' && a.payload.role === 'MANAGER' && a.payload.branch === selectedBranchForManagers.id)
+                                                .map(a => ({ ...a.payload, id: a.id, isPending: true }));
+                                            const merged = [...pending, ...synced];
+
+                                            if (merged.length === 0) return (
+                                                <div className="py-12 text-center bg-[hsl(var(--muted)/0.2)] rounded-3xl border border-dashed border-[hsl(var(--border))]">
+                                                    <p className="text-[10px] font-black uppercase text-[hsl(var(--muted-foreground))] tracking-widest">No managers established.</p>
+                                                </div>
+                                            );
+
+                                            return merged.map(mgr => (
+                                                <div key={mgr.id || mgr.username} className="p-5 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-3xl flex items-center justify-between hover:border-[hsl(var(--primary))] transition-all group shadow-sm hover:shadow-md">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${mgr.isPending ? 'bg-amber-500/10 text-amber-500' : mgr.is_active ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}`}>
+                                                            <ShieldCheck size={24} />
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-sm font-black uppercase tracking-tight">{mgr.username}</p>
+                                                                {mgr.isPending && (
+                                                                    <span className="text-[8px] font-black uppercase text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded">Sync Pending</span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] lowercase">{mgr.email}</p>
+                                                            <p className="text-[9px] font-black text-amber-500 uppercase tracking-tighter opacity-70 mt-1">Authorized by: {mgr.created_by_name || 'System'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {!mgr.isPending && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => toggleUserStatus(mgr.id)}
+                                                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mgr.is_active ? 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] hover:bg-emerald-500/10 hover:text-emerald-600' : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'}`}
+                                                                >
+                                                                    {mgr.is_active ? 'Suspend' : 'Restore'}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => removeUser(mgr.id)}
+                                                                    className="p-2.5 bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white rounded-xl transition-all"
+                                                                    title="Decommission User"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
-                                            </div>
-
-                                            <div className="pt-2 space-y-3">
-                                                <p className="text-[10px] font-black text-[hsl(var(--muted-foreground))] uppercase tracking-widest pl-1">Provision Branch Manager</p>
-                                                <div className="space-y-3">
-                                                    <div className="erp-input-group">
-                                                        <label className="erp-label !mb-1">Username</label>
-                                                        <input type="text" value={newManagerUsername} onChange={e => setNewManagerUsername(e.target.value)} className="erp-input py-2" placeholder="manager_id" />
-                                                    </div>
-                                                    <div className="erp-input-group">
-                                                        <label className="erp-label !mb-1">Email</label>
-                                                        <input type="email" value={newManagerEmail} onChange={e => setNewManagerEmail(e.target.value)} className="erp-input py-2" placeholder="m@golderp.com" />
-                                                    </div>
-                                                    <div className="erp-input-group">
-                                                        <label className="erp-label !mb-1">Access Password</label>
-                                                        <input type="password" value={newManagerPassword} onChange={e => setNewManagerPassword(e.target.value)} className="erp-input py-2" />
-                                                    </div>
-                                                    <button onClick={createManager} className="w-full py-3 mt-2 bg-[var(--gold-gradient)] text-black font-black rounded-xl shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest text-xs">
-                                                        Authorize Manager
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
+                                            ));
+                                        })()}
                                     </div>
                                 </div>
 
-                                {/* Right Side: Personnel Lists */}
-                                <div className="lg:col-span-2 space-y-8">
-                                    {/* Managers Section */}
-                                    <div className="erp-section">
-                                        <div className="erp-section-header">
-                                            <h3 className="erp-section-title">Branch Managers</h3>
+                                {/* Right Column: Staff */}
+                                <div className="erp-section">
+                                    <div className="erp-section-header bg-blue-500/5">
+                                        <div className="flex items-center gap-3">
+                                            <Users size={18} className="text-blue-500" />
+                                            <h3 className="erp-section-title">Operations Staff</h3>
                                         </div>
-                                        <div className="erp-section-content !p-0">
-                                            <div className="grid gap-4 p-4">
-                                                {usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').length === 0 ? (
-                                                    <p className="text-center py-10 text-[10px] font-black uppercase text-[hsl(var(--muted-foreground))] tracking-widest">No managers assigned.</p>
-                                                ) : (
-                                                    usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'MANAGER').map(mgr => (
-                                                        <div key={mgr.id} className="p-4 bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] rounded-2xl flex items-center justify-between group">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className={`w-2.5 h-2.5 rounded-full ${mgr.is_active ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`} />
-                                                                <div>
-                                                                    <p className="text-xs font-black uppercase mb-0.5">{mgr.username}</p>
-                                                                    <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))]">{mgr.email}</p>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <button onClick={() => toggleUserStatus(mgr.id)} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${mgr.is_active ? 'bg-[var(--gold-gradient)] text-black shadow-sm' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'}`}>
-                                                                    {mgr.is_active ? 'Suspend' : 'Restore'}
-                                                                </button>
-                                                                <button onClick={() => removeUser(mgr.id)} className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-all">
-                                                                    Remove
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ))
-                                                )}
-                                            </div>
-                                        </div>
+                                        <span className="text-[10px] font-black text-blue-600 bg-blue-500/10 px-2 py-1 rounded">Personnel oversight</span>
                                     </div>
+                                    <div className="erp-section-content space-y-4">
+                                        {(() => {
+                                            const synced = usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'STAFF');
+                                            const pending = pendingActions
+                                                .filter(a => a.type === 'CREATE_STAFF' && a.payload.role === 'STAFF' && a.payload.branch === selectedBranchForManagers.id)
+                                                .map(a => ({ ...a.payload, id: a.id, isPending: true }));
+                                            const merged = [...pending, ...synced];
 
-                                    {/* Staff Section */}
-                                    <div className="erp-section">
-                                        <div className="erp-section-header">
-                                            <h3 className="erp-section-title">Branch Staff</h3>
-                                        </div>
-                                        <div className="erp-section-content !p-0">
-                                            <div className="grid gap-4 p-4">
-                                                {usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'STAFF').length === 0 ? (
-                                                    <p className="text-center py-10 text-[10px] font-black uppercase text-[hsl(var(--muted-foreground))] tracking-widest">No staff records found.</p>
-                                                ) : (
-                                                    usersList.filter(u => u.branch === selectedBranchForManagers.id && u.role === 'STAFF').map(staff => (
-                                                        <div key={staff.id} className="p-4 bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] rounded-2xl flex items-center justify-between group">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className={`w-2.5 h-2.5 rounded-full ${staff.is_active ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`} />
-                                                                <div>
-                                                                    <p className="text-xs font-black uppercase mb-0.5">{staff.username}</p>
-                                                                    <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))]">{staff.email}</p>
-                                                                </div>
-                                                            </div>
+                                            if (merged.length === 0) return (
+                                                <div className="py-12 text-center bg-[hsl(var(--muted)/0.2)] rounded-3xl border border-dashed border-[hsl(var(--border))]">
+                                                    <p className="text-[10px] font-black uppercase text-[hsl(var(--muted-foreground))] tracking-widest">No staff records found.</p>
+                                                </div>
+                                            );
+
+                                            return merged.map(staff => (
+                                                <div key={staff.id || staff.username} className="p-5 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-3xl flex items-center justify-between hover:border-blue-500/50 transition-all group shadow-sm hover:shadow-md">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${staff.isPending ? 'bg-amber-500/10 text-amber-500' : staff.is_active ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}`}>
+                                                            <Users size={24} />
+                                                        </div>
+                                                        <div>
                                                             <div className="flex items-center gap-2">
-                                                                <button onClick={() => toggleUserStatus(staff.id)} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${staff.is_active ? 'bg-[var(--gold-gradient)] text-black shadow-sm' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'}`}>
+                                                                <p className="text-sm font-black uppercase tracking-tight">{staff.username}</p>
+                                                                {staff.isPending && (
+                                                                    <span className="text-[8px] font-black uppercase text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded">Sync Pending</span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] lowercase">{staff.email}</p>
+                                                            <p className="text-[9px] font-black text-blue-500 uppercase tracking-tighter opacity-70 mt-1">Authorized by: {staff.created_by_name || 'System'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {!staff.isPending && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => toggleUserStatus(staff.id)}
+                                                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${staff.is_active ? 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] hover:bg-emerald-500/10 hover:text-emerald-600' : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'}`}
+                                                                >
                                                                     {staff.is_active ? 'Suspend' : 'Restore'}
                                                                 </button>
-                                                                <button onClick={() => removeUser(staff.id)} className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-all">
-                                                                    Remove
+                                                                <button
+                                                                    onClick={() => removeUser(staff.id)}
+                                                                    className="p-2.5 bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white rounded-xl transition-all"
+                                                                    title="Decommission User"
+                                                                >
+                                                                    <Trash2 size={16} />
                                                                 </button>
-                                                            </div>
-                                                        </div>
-                                                    ))
-                                                )}
-                                            </div>
-                                        </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ));
+                                        })()}
                                     </div>
                                 </div>
                             </div>
@@ -947,30 +1084,79 @@ const AdminDashboard = () => {
                                 <h3 className="erp-section-title">Consolidated Expense Ledger</h3>
                             </div>
                             <div className="erp-section-content !p-0">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead className="bg-[hsl(var(--muted))] text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border-b border-[hsl(var(--border))]">
-                                            <tr>
-                                                <th className="px-10 py-6">Posting Date</th>
-                                                <th className="px-10 py-6">Origin Entity</th>
-                                                <th className="px-10 py-6">Procurement Source</th>
-                                                <th className="px-10 py-6">Volume (g)</th>
-                                                <th className="px-10 py-6">Rate/g</th>
-                                                <th className="px-10 py-6 text-right">Settlement (USD)</th>
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-[hsl(var(--muted))] text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border-b border-[hsl(var(--border))]">
+                                        <tr>
+                                            <th className="px-6 py-4">Posting Date</th>
+                                            <th className="px-6 py-4">Origin Entity</th>
+                                            <th className="px-6 py-4">Procurement Source</th>
+                                            <th className="px-6 py-4">Volume (g)</th>
+                                            <th className="px-6 py-4">Rate/g</th>
+                                            <th className="px-6 py-4">Status</th>
+                                            <th className="px-6 py-4">Auditor</th>
+                                            <th className="px-6 py-4 text-right">Settlement (USD)</th>
+                                            <th className="px-6 py-4 text-right">Approval</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-[hsl(var(--border))]">
+                                        {[
+                                            ...pendingActions
+                                                .filter(a => a.type === 'CREATE_EXPENSE')
+                                                .map(a => ({ ...a.payload, isPending: true, id: a.id })),
+                                            ...expenses
+                                        ].map(exp => (
+                                            <tr key={exp.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors">
+                                                <td className="px-6 py-4 font-mono text-xs">
+                                                    <div className="flex flex-col gap-1">
+                                                        <span>{exp.date}</span>
+                                                        {exp.isPending && (
+                                                            <span className="flex items-center gap-1 text-[9px] font-black uppercase text-amber-500">
+                                                                <Clock size={8} /> Pending
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 font-black uppercase text-[11px]">{exp.branch_name || 'Local HQ'}</td>
+                                                <td className="px-6 py-4 text-sm font-bold">{exp.source_name}</td>
+                                                <td className="px-6 py-4 font-mono font-bold">{exp.grams} g</td>
+                                                <td className="px-6 py-4 font-mono text-[hsl(var(--muted-foreground))]">${exp.rate_per_gram}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`text-[9px] font-black uppercase px-2 py-1 rounded ${
+                                                        exp.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-600' :
+                                                        exp.status === 'REJECTED' ? 'bg-red-500/10 text-red-600' :
+                                                        'bg-amber-500/10 text-amber-500'
+                                                    }`}>
+                                                        {exp.status || 'PENDING'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="text-[10px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-widest">{exp.created_by_name || 'System'}</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right font-black text-red-500">-${Number(exp.total).toLocaleString()}</td>
+                                                <td className="px-6 py-4 text-right">
+                                                    {exp.status === 'PENDING' && !exp.isPending && (
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button
+                                                                onClick={() => updateExpenseStatus(exp.id, 'APPROVED')}
+                                                                className="p-2 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-lg transition-all"
+                                                                title="Approve"
+                                                            >
+                                                                <CheckCircle2 size={16} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => updateExpenseStatus(exp.id, 'REJECTED')}
+                                                                className="p-2 bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white rounded-lg transition-all"
+                                                                title="Reject"
+                                                            >
+                                                                <XCircle size={16} />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-[hsl(var(--border))]">
-                                            {expenses.map(exp => (
-                                                <tr key={exp.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors">
-                                                    <td className="px-10 py-6 font-mono text-xs">{exp.date}</td>
-                                                    <td className="px-10 py-6 font-black uppercase text-[11px]">{exp.branch_name || 'Global HQ'}</td>
-                                                    <td className="px-10 py-6 text-sm font-bold">{exp.source_name}</td>
-                                                    <td className="px-10 py-6 font-mono font-bold">{exp.grams} g</td>
-                                                    <td className="px-10 py-6 font-mono text-[hsl(var(--muted-foreground))]">${exp.rate_per_gram}</td>
-                                                    <td className="px-10 py-6 text-right font-black text-red-500">-${Number(exp.total).toLocaleString()}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     )}
@@ -1027,11 +1213,11 @@ const AdminDashboard = () => {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div className="erp-section h-fit">
                                     <div className="erp-section-header flex justify-between items-center">
                                         <h3 className="erp-section-title">Bulk Import Matrix</h3>
-                                        <button 
+                                        <button
                                             onClick={downloadDemoTemplate}
                                             title="Download Demo Template"
                                             className="p-2 hover:bg-[var(--bg-sidebar)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all"
@@ -1041,7 +1227,7 @@ const AdminDashboard = () => {
                                     </div>
                                     <div className="erp-section-content">
                                         <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} disabled={isUploading} className="erp-input mb-4 p-2 text-xs disabled:opacity-50" />
-                                        
+
                                         {isUploading && (
                                             <div className="mb-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded flex items-center gap-4 animate-in fade-in zoom-in duration-300">
                                                 <Loader2 className="animate-spin text-emerald-500" size={20} />
@@ -1051,8 +1237,8 @@ const AdminDashboard = () => {
                                                         <p className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">{uploadProgress.current} / {uploadProgress.total}</p>
                                                     </div>
                                                     <div className="h-1 bg-[var(--border-main)] rounded-full overflow-hidden">
-                                                        <div 
-                                                            className="h-full bg-emerald-500 transition-all duration-300" 
+                                                        <div
+                                                            className="h-full bg-emerald-500 transition-all duration-300"
                                                             style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
                                                         />
                                                     </div>
@@ -1078,7 +1264,7 @@ const AdminDashboard = () => {
                                     <h3 className="erp-section-title flex items-center gap-2">
                                         <HistoryIcon size={16} /> System Audit Intelligence
                                     </h3>
-                                    <button 
+                                    <button
                                         onClick={fetchAdminLogs}
                                         className="p-2 hover:bg-[hsl(var(--muted))] rounded-xl transition-all text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))]"
                                     >
@@ -1133,16 +1319,15 @@ const AdminDashboard = () => {
                                                                 <div className="w-6 h-6 rounded-lg bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[hsl(var(--primary))]">
                                                                     <Command size={12} />
                                                                 </div>
-                                                                    <p className="text-xs font-black uppercase tracking-tight">{log.username}</p>
-                                                                    <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-widest">{log.role}</p>
-                                                                </div>
+                                                                <p className="text-xs font-black uppercase tracking-tight">{log.username}</p>
+                                                                <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-widest">{log.role}</p>
+                                                            </div>
                                                         </td>
                                                         <td className="px-10 py-6">
-                                                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${
-                                                                log.action.includes('DELETE') || log.action.includes('REVOKE') ? 'bg-red-500/10 text-red-500' :
+                                                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${log.action.includes('DELETE') || log.action.includes('REVOKE') ? 'bg-red-500/10 text-red-500' :
                                                                 log.action.includes('CREATE') ? 'bg-emerald-500/10 text-emerald-500' :
-                                                                'bg-blue-500/10 text-blue-500'
-                                                            }`}>
+                                                                    'bg-blue-500/10 text-blue-500'
+                                                                }`}>
                                                                 {log.action.replace(/_/g, ' ')}
                                                             </span>
                                                         </td>

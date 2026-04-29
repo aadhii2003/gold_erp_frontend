@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../app/store';
 import { calculateDensity, calculatePurity } from '../../utils/calculations';
-import { saveSaleOffline, saveConstantsOffline, getConstantsOffline } from '../../db/indexedDB';
+import { saveSaleOffline, saveConstantsOffline, getConstantsOffline, getPendingSales } from '../../db/indexedDB';
 import { syncAllData } from '../../utils/syncManager';
 import { v4 as uuidv4 } from 'uuid';
 import apiClient from '../../api/axiosConfig';
@@ -92,6 +92,7 @@ const POS = () => {
     const [isViewingMode, setIsViewingMode] = useState(false);
 
     const [salesLedger, setSalesLedger] = useState<any[]>([]);
+    const [pendingSales, setPendingSales] = useState<any[]>([]);
 
     useEffect(() => {
         fetchMySales();
@@ -194,6 +195,9 @@ const POS = () => {
             const res = await apiClient.get('/sales/');
             setSalesLedger(res.data);
         } catch (e) { }
+
+        const pending = await getPendingSales();
+        setPendingSales(pending);
     };
 
     const toggleTheme = () => {
@@ -781,23 +785,40 @@ const POS = () => {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-[hsl(var(--border))]">
-                                            {salesLedger.map((sale) => (
+                                            {/* Merged History: Pending first, then synced */}
+                                            {[...pendingSales, ...salesLedger].map((sale) => {
+                                                const isPending = sale.status === 'pending';
+                                                return (
                                                 <tr key={sale.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors group">
                                                     <td className="p-6 text-xs font-bold text-[hsl(var(--muted-foreground))]">
-                                                        {new Date(sale.created_at).toLocaleDateString()}
+                                                        {new Date(sale.created_at || sale.filing_date).toLocaleDateString()}
                                                     </td>
-                                                    <td className="p-6 text-sm font-black uppercase">{sale.vendor}</td>
+                                                    <td className="p-6 text-sm font-black uppercase">{sale.vendor || sale.client_name}</td>
                                                     <td className="p-6 text-sm font-bold text-[hsl(var(--foreground))]">${Number(sale.net_price).toFixed(2)}</td>
                                                     <td className="p-6 text-sm font-black text-[hsl(var(--foreground))]">${Number(sale.subtotal).toFixed(2)}</td>
                                                     <td className="p-6 text-sm font-bold text-emerald-600">${Number(sale.paid_amount).toFixed(2)}</td>
                                                     <td className="p-6">
-                                                        <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] font-black uppercase tracking-widest border border-emerald-500/20">
-                                                            Settled
-                                                        </span>
+                                                        {isPending ? (
+                                                            <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[9px] font-black uppercase tracking-widest border border-amber-500/20 flex items-center gap-2 w-fit">
+                                                                <Clock size={10} /> Sync Pending
+                                                            </span>
+                                                        ) : (
+                                                            <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] font-black uppercase tracking-widest border border-emerald-500/20">
+                                                                Settled
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td className="p-6 text-right">
                                                         <button
-                                                            onClick={() => handleViewSale(sale)}
+                                                            onClick={() => {
+                                                                if (isPending) {
+                                                                    setLastSavedSale(sale);
+                                                                    setShowReceipt(true);
+                                                                    setIsViewingMode(true);
+                                                                } else {
+                                                                    handleViewSale(sale);
+                                                                }
+                                                            }}
                                                             className="p-3 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] rounded-xl transition-all"
                                                             title="View Bill"
                                                         >
@@ -805,7 +826,8 @@ const POS = () => {
                                                         </button>
                                                     </td>
                                                 </tr>
-                                            ))}
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>

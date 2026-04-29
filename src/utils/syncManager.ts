@@ -76,8 +76,14 @@ export const syncAllData = async () => {
                     console.log(`Action ${action.type} synced successfully`);
                 }
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error(`Action ${action.type} sync failed`, e);
+            // If it's a 400 Bad Request, the data is invalid or already exists.
+            // We should remove it to prevent infinite sync loops.
+            if (e.response?.status === 400) {
+                console.warn(`Removing failed action ${action.id} due to permanent validation error (400)`);
+                await deleteAction(action.id);
+            }
         }
     }
 };

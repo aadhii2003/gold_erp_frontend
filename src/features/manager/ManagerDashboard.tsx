@@ -24,7 +24,8 @@ import {
     X,
     FileDown,
     Eye,
-    RefreshCw
+    RefreshCw,
+    Clock
 } from 'lucide-react';
 import { 
     saveUsersOffline, getUsersOffline,
@@ -53,10 +54,14 @@ const ManagerDashboard = () => {
     
     // Expense State
     const [expenses, setExpenses] = useState<any[]>([]);
+    const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+    const [expenseCategory, setExpenseCategory] = useState<'GOLD_PURCHASE' | 'BRANCH_EXPENSE' | 'OTHER'>('GOLD_PURCHASE');
     const [sourceName, setSourceName] = useState('');
+    const [expenseDescription, setExpenseDescription] = useState('');
     const [ratePerGram, setRatePerGram] = useState<number | ''>('');
     const [grams, setGrams] = useState<number | ''>('');
-    const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+    const [manualTotal, setManualTotal] = useState<number | ''>('');
+    const [expenseSubTab, setExpenseSubTab] = useState<'GOLD' | 'OPERATIONAL'>('GOLD');
     const [selectedSale, setSelectedSale] = useState<any>(null);
 
     useEffect(() => {
@@ -132,6 +137,7 @@ const ManagerDashboard = () => {
             setNewUsername('');
             setNewEmail('');
             setNewPassword('');
+            getPendingActions().then(setPendingActions);
             return;
         }
 
@@ -146,38 +152,51 @@ const ManagerDashboard = () => {
         getPendingActions().then(setPendingActions);
     };
 
-    const expenseTotal = (ratePerGram !== '' && grams !== '') ? Number(ratePerGram) * Number(grams) : 0;
+    const expenseTotal = expenseCategory === 'GOLD_PURCHASE' 
+        ? (Number(ratePerGram || 0) * Number(grams || 0))
+        : Number(manualTotal || 0);
 
     const createExpense = async () => {
-        if (!sourceName || !ratePerGram || !grams) return;
+        if (!sourceName || expenseTotal <= 0) {
+            alert("Please provide a source and a valid amount.");
+            return;
+        }
+
         const payload = {
+            category: expenseCategory,
             source_name: sourceName,
-            rate_per_gram: Number(ratePerGram),
-            grams: Number(grams),
+            description: expenseDescription,
+            rate_per_gram: expenseCategory === 'GOLD_PURCHASE' ? ratePerGram : null,
+            grams: expenseCategory === 'GOLD_PURCHASE' ? grams : null,
             total: expenseTotal,
-            date: expenseDate,
-            branch: (user as any)?.branch_id
+            date: expenseDate
         };
 
         if (!navigator.onLine) {
             await queueAction('CREATE_EXPENSE', payload);
-            alert('Offline: Expense recorded locally. It will sync when online.');
-            setSourceName('');
-            setRatePerGram('');
-            setGrams('');
+            alert('Offline: Expense recorded locally. Will sync when online.');
+            resetExpenseForm();
+            getPendingActions().then(setPendingActions);
             return;
         }
 
         try {
             await apiClient.post('/expenses/create/', payload);
-            
-            setSourceName('');
-            setRatePerGram('');
-            setGrams('');
+            alert('Expense recorded successfully.');
+            resetExpenseForm();
             fetchExpenses();
-            alert('Expense added successfully.');
-        } catch (e) { alert('Failed to record expense.'); }
-        getPendingActions().then(setPendingActions);
+        } catch (e) {
+            console.error(e);
+            alert('Failed to record expense.');
+        }
+    };
+
+    const resetExpenseForm = () => {
+        setSourceName('');
+        setExpenseDescription('');
+        setRatePerGram('');
+        setGrams('');
+        setManualTotal('');
     };
 
     const toggleUserStatus = async (id: number) => {
@@ -417,25 +436,79 @@ const ManagerDashboard = () => {
                     {activeTab === 'expenses' && (
                         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-in fade-in duration-500">
                             <div className="xl:col-span-2 erp-section">
-                                <div className="erp-section-header">
-                                    <h3 className="erp-section-title">Procurement Ledger</h3>
+                                <div className="erp-section-header flex justify-between items-center">
+                                    <h3 className="erp-section-title">Consolidated Ledger</h3>
+                                    <div className="flex bg-[hsl(var(--muted))] p-1 rounded-xl border border-[hsl(var(--border))]">
+                                        <button 
+                                            onClick={() => setExpenseSubTab('GOLD')}
+                                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${expenseSubTab === 'GOLD' ? 'bg-[hsl(var(--card))] text-[hsl(var(--foreground))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
+                                        >
+                                            Gold
+                                        </button>
+                                        <button 
+                                            onClick={() => setExpenseSubTab('OPERATIONAL')}
+                                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${expenseSubTab === 'OPERATIONAL' ? 'bg-[hsl(var(--card))] text-[hsl(var(--foreground))] shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}
+                                        >
+                                            Ops
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="erp-section-content !p-0">
                                     <table className="w-full text-left border-collapse">
                                         <thead className="bg-[hsl(var(--muted))] text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border-b border-[hsl(var(--border))]">
                                             <tr>
                                                 <th className="p-6">Date</th>
-                                                <th className="p-6">Source</th>
-                                                <th className="p-6">Weight Data</th>
+                                                <th className="p-6">Type</th>
+                                                <th className="p-6">Entity/Details</th>
+                                                <th className="p-6">Status</th>
                                                 <th className="p-6 text-right">Settlement</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-[hsl(var(--border))]">
-                                            {expenses.map(exp => (
+                                            {/* Merged Expenses: Pending first, then synced */}
+                                            {[
+                                                ...pendingActions
+                                                    .filter(a => a.type === 'CREATE_EXPENSE')
+                                                    .map(a => ({ ...a.payload, isPending: true, id: a.id })),
+                                                ...expenses
+                                            ]
+                                              .filter(exp => expenseSubTab === 'GOLD' ? exp.category === 'GOLD_PURCHASE' : exp.category !== 'GOLD_PURCHASE')
+                                              .map(exp => (
                                                 <tr key={exp.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors">
                                                     <td className="p-6 font-mono text-xs">{exp.date}</td>
-                                                    <td className="p-6 font-black uppercase text-[11px]">{exp.source_name}</td>
-                                                    <td className="p-6 text-xs text-[hsl(var(--muted-foreground))] font-bold">{exp.grams}g @ <span className="text-[hsl(var(--foreground))]">${exp.rate_per_gram}/g</span></td>
+                                                    <td className="p-6">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`text-[9px] px-2 py-1 rounded-md font-black uppercase tracking-tighter ${
+                                                                exp.category === 'GOLD_PURCHASE' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 
+                                                                exp.category === 'BRANCH_EXPENSE' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 
+                                                                'bg-purple-500/10 text-purple-500 border border-purple-500/20'
+                                                            }`}>
+                                                                {exp.category === 'GOLD_PURCHASE' ? 'Gold' : exp.category === 'BRANCH_EXPENSE' ? 'Branch' : 'Other'}
+                                                            </span>
+                                                            {exp.isPending && (
+                                                                <span className="text-[9px] px-2 py-1 rounded-md font-black uppercase tracking-tighter bg-zinc-500/10 text-zinc-500 border border-zinc-500/20 flex items-center gap-1">
+                                                                    <Clock size={8} /> Pending
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-6">
+                                                        <div className="font-black uppercase text-[11px] mb-0.5">{exp.source_name}</div>
+                                                        {exp.category === 'GOLD_PURCHASE' ? (
+                                                            <div className="text-[10px] text-[hsl(var(--muted-foreground))] font-bold">{exp.grams}g @ ${exp.rate_per_gram}/g</div>
+                                                        ) : (
+                                                            <div className="text-[10px] text-[hsl(var(--muted-foreground))] italic">{exp.description}</div>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-6">
+                                                        <span className={`text-[9px] font-black uppercase px-2 py-1 rounded ${
+                                                            exp.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-600' :
+                                                            exp.status === 'REJECTED' ? 'bg-red-500/10 text-red-600' :
+                                                            'bg-amber-500/10 text-amber-500'
+                                                        }`}>
+                                                            {exp.status || (exp.isPending ? 'SYNCING' : 'PENDING')}
+                                                        </span>
+                                                    </td>
                                                     <td className="p-6 text-right font-black text-red-500">-${Number(exp.total).toLocaleString()}</td>
                                                 </tr>
                                             ))}
@@ -446,30 +519,76 @@ const ManagerDashboard = () => {
 
                             <div className="erp-section h-fit">
                                 <div className="erp-section-header">
-                                    <h3 className="erp-section-title">Record Procurement</h3>
+                                    <h3 className="erp-section-title">New Entry</h3>
                                 </div>
                                 <div className="erp-section-content">
                                     <div className="space-y-4">
                                         <div className="erp-input-group">
+                                            <label className="erp-label">Category</label>
+                                            <select 
+                                                value={expenseCategory} 
+                                                onChange={e => setExpenseCategory(e.target.value as any)}
+                                                className="erp-input"
+                                            >
+                                                <option value="GOLD_PURCHASE">Gold Purchase</option>
+                                                <option value="BRANCH_EXPENSE">Branch Operational Expense</option>
+                                                <option value="OTHER">Other Expense</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="erp-input-group">
                                             <label className="erp-label">Posting Date</label>
                                             <input type="date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} className="erp-input" />
                                         </div>
+
                                         <div className="erp-input-group">
-                                            <label className="erp-label">Source Identity</label>
-                                            <input type="text" placeholder="e.g. Local Supplier" value={sourceName} onChange={e => setSourceName(e.target.value)} className="erp-input" />
+                                            <label className="erp-label">{expenseCategory === 'GOLD_PURCHASE' ? 'Vendor/Source' : 'Expense Title'}</label>
+                                            <input 
+                                                type="text" 
+                                                placeholder={expenseCategory === 'GOLD_PURCHASE' ? 'e.g. Local Supplier' : 'e.g. Electricity Bill'} 
+                                                value={sourceName} 
+                                                onChange={e => setSourceName(e.target.value)} 
+                                                className="erp-input" 
+                                            />
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="erp-input-group">
-                                                <label className="erp-label">Rate (USD/g)</label>
-                                                <input type="number" placeholder="0.00" value={ratePerGram} onChange={e => setRatePerGram(e.target.value === '' ? '' : Number(e.target.value))} className="erp-input" />
+
+                                        {expenseCategory === 'GOLD_PURCHASE' ? (
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="erp-input-group">
+                                                    <label className="erp-label">Rate (USD/g)</label>
+                                                    <input type="number" placeholder="0.00" value={ratePerGram} onChange={e => setRatePerGram(e.target.value === '' ? '' : Number(e.target.value))} className="erp-input" />
+                                                </div>
+                                                <div className="erp-input-group">
+                                                    <label className="erp-label">Volume (g)</label>
+                                                    <input type="number" placeholder="0.00" value={grams} onChange={e => setGrams(e.target.value === '' ? '' : Number(e.target.value))} className="erp-input" />
+                                                </div>
                                             </div>
-                                            <div className="erp-input-group">
-                                                <label className="erp-label">Volume (g)</label>
-                                                <input type="number" placeholder="0.00" value={grams} onChange={e => setGrams(e.target.value === '' ? '' : Number(e.target.value))} className="erp-input" />
-                                            </div>
-                                        </div>
+                                        ) : (
+                                            <>
+                                                <div className="erp-input-group">
+                                                    <label className="erp-label">Description (Optional)</label>
+                                                    <textarea 
+                                                        placeholder="Add details..." 
+                                                        value={expenseDescription} 
+                                                        onChange={e => setExpenseDescription(e.target.value)} 
+                                                        className="erp-input min-h-[80px]"
+                                                    />
+                                                </div>
+                                                <div className="erp-input-group">
+                                                    <label className="erp-label">Amount (USD)</label>
+                                                    <input 
+                                                        type="number" 
+                                                        placeholder="0.00" 
+                                                        value={manualTotal} 
+                                                        onChange={e => setManualTotal(e.target.value === '' ? '' : Number(e.target.value))} 
+                                                        className="erp-input" 
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
+                                        
                                         <div className="p-6 bg-[hsl(var(--muted))] rounded-2xl border border-[hsl(var(--border))] text-center">
-                                            <p className="text-[9px] text-[hsl(var(--muted-foreground))] font-black uppercase tracking-[0.2em] mb-2">Calculated Settlement</p>
+                                            <p className="text-[9px] text-[hsl(var(--muted-foreground))] font-black uppercase tracking-[0.2em] mb-2">Total Settlement</p>
                                             <p className="text-3xl font-black text-[hsl(var(--foreground))] tracking-tighter">${expenseTotal.toLocaleString()}</p>
                                         </div>
                                         <button onClick={createExpense} className="erp-button-primary w-full">Commit to Ledger</button>
@@ -500,14 +619,28 @@ const ManagerDashboard = () => {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-[hsl(var(--border))]">
-                                            {staffList.filter(s => s.role === 'STAFF').map(staff => (
+                                            {/* Merged Staff: Pending first, then synced */}
+                                            {[
+                                                ...pendingActions
+                                                    .filter(a => a.type === 'CREATE_STAFF')
+                                                    .map(a => ({ ...a.payload, isPending: true, id: a.id, is_active: true })),
+                                                ...staffList.filter(s => s.role === 'STAFF')
+                                            ].map(staff => (
                                                 <tr key={staff.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors group">
                                                     <td className="p-6">
                                                         <div className="flex items-center gap-4">
-                                                            <div className="w-10 h-10 rounded-2xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))] flex items-center justify-center text-xs font-black uppercase">
-                                                                {staff.username.substring(0,2)}
+                                                            <div className="w-10 h-10 rounded-2xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))] flex items-center justify-center text-xs font-black uppercase overflow-hidden">
+                                                                <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${staff.username}`} alt="avatar" />
                                                             </div>
-                                                            <span className="font-black uppercase text-sm tracking-tight">{staff.username}</span>
+                                                            <div>
+                                                                <div className="font-black uppercase text-sm tracking-tight flex items-center gap-2">
+                                                                    {staff.username}
+                                                                    {staff.isPending && (
+                                                                        <span className="text-[8px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded border border-amber-500/20">Pending Sync</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-[10px] text-[hsl(var(--muted-foreground))] font-bold">{staff.email || 'No email registered'}</div>
+                                                            </div>
                                                         </div>
                                                     </td>
                                                     <td className="p-6">
@@ -517,12 +650,16 @@ const ManagerDashboard = () => {
                                                     </td>
                                                     <td className="p-6 text-right">
                                                         <div className="flex items-center justify-end gap-4">
-                                                            <button onClick={() => toggleUserStatus(staff.id)} className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--primary))] hover:underline">
-                                                                {staff.is_active ? 'Revoke Access' : 'Restore Access'}
-                                                            </button>
-                                                            <button onClick={() => deleteUser(staff.id)} className="p-3 bg-[hsl(var(--muted))] rounded-xl text-[hsl(var(--muted-foreground))] hover:text-red-500 transition-all">
-                                                                <Trash2 size={16} />
-                                                            </button>
+                                                            {!staff.isPending && (
+                                                                <>
+                                                                    <button onClick={() => toggleUserStatus(staff.id)} className="text-[10px] font-black uppercase tracking-widest text-[hsl(var(--primary))] hover:underline">
+                                                                        {staff.is_active ? 'Revoke Access' : 'Restore Access'}
+                                                                    </button>
+                                                                    <button onClick={() => deleteUser(staff.id)} className="p-3 bg-[hsl(var(--muted))] rounded-xl text-[hsl(var(--muted-foreground))] hover:text-red-500 transition-all">
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>
