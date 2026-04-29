@@ -41,7 +41,9 @@ import {
     saveUsersOffline, getUsersOffline,
     saveExpensesOffline, getExpensesOffline,
     saveLogsOffline, getLogsOffline,
-    queueAction
+    saveGlobalSalesOffline, getGlobalSalesOffline,
+    saveMatrixOffline, getMatrixOffline,
+    queueAction, getPendingActions
 } from '../../db/indexedDB';
 import { syncAllData } from '../../utils/syncManager';
 
@@ -52,6 +54,7 @@ const AdminDashboard = () => {
     const navigate = useNavigate();
     
     const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const [pendingActions, setPendingActions] = useState<any[]>([]);
 
     const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -132,6 +135,8 @@ const AdminDashboard = () => {
     }, [user, navigate]);
 
     const fetchAdminLogs = async () => {
+        const pending = await getPendingActions();
+        setPendingActions(pending);
         try {
             const res = await apiClient.get('/user-logs/');
             setAdminLogs(res.data);
@@ -168,7 +173,12 @@ const AdminDashboard = () => {
         try {
             const res = await apiClient.get('/density-purity/');
             setMatrixList(res.data);
-        } catch (e) { console.error(e); }
+            await saveMatrixOffline(res.data);
+        } catch (e) { 
+            console.error(e); 
+            const offlineMatrix = await getMatrixOffline();
+            if (offlineMatrix.length > 0) setMatrixList(offlineMatrix);
+        }
     };
 
     const createMatrixEntry = async () => {
@@ -291,7 +301,12 @@ const AdminDashboard = () => {
         try {
             const res = await apiClient.get('/sales/');
             setAllSales(res.data);
-        } catch (e) { console.error(e); }
+            await saveGlobalSalesOffline(res.data);
+        } catch (e) { 
+            console.error(e); 
+            const offlineSales = await getGlobalSalesOffline();
+            if (offlineSales.length > 0) setAllSales(offlineSales);
+        }
     };
 
     const updateRates = async () => {
@@ -335,7 +350,7 @@ const AdminDashboard = () => {
         }
 
         try {
-            await apiClient.post('/branches/', payload);
+            await apiClient.post('/branches/create/', payload);
             setBranchName('');
             setXFactor(92.0);
             fetchBranches();
@@ -674,36 +689,36 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
                                 <div className="erp-section-content !p-0">
-                                    <table className="erp-table">
-                                        <thead className="erp-table-header">
+                                    <table className="w-full border-collapse">
+                                        <thead className="bg-[hsl(var(--muted))] text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border-b border-[hsl(var(--border))]">
                                             <tr>
-                                                <th className="p-4">Timestamp</th>
-                                                <th className="p-4">Branch</th>
-                                                <th className="p-4">Vendor</th>
-                                                <th className="p-4">Purity</th>
-                                                <th className="p-4">Weight (g)</th>
-                                                <th className="p-4">Settlement (USD)</th>
-                                                <th className="p-4 text-right">Actions</th>
+                                                <th className="px-10 py-6 text-left">Timestamp</th>
+                                                <th className="px-10 py-6 text-left">Branch</th>
+                                                <th className="px-10 py-6 text-left">Vendor</th>
+                                                <th className="px-10 py-6 text-left">Purity</th>
+                                                <th className="px-10 py-6 text-left">Weight (g)</th>
+                                                <th className="px-10 py-6 text-left">Settlement (USD)</th>
+                                                <th className="px-10 py-6 text-right">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                                 {allSales
                                                 .filter(s => salesFilterBranch === 'All Branches' || s.branch_name === salesFilterBranch)
                                                 .map(sale => (
-                                                    <tr key={sale.id} className="border-b border-[hsl(var(--border))] last:border-0 hover:bg-[hsl(var(--muted)/0.3)] transition-colors">
-                                                        <td className="p-4 font-mono text-[10px]">{new Date(sale.created_at).toLocaleString()}</td>
-                                                        <td className="p-4 font-black uppercase text-[10px]">{sale.branch_name || 'Global'}</td>
-                                                        <td className="p-4 text-xs font-bold">{sale.vendor}</td>
-                                                        <td className="p-4 font-mono text-xs text-emerald-600 font-bold">{sale.actual_product_quality}%</td>
-                                                        <td className="p-4 font-mono text-xs">{sale.actual_process_weight}g</td>
-                                                        <td className="p-4 font-black text-xs">${Number(sale.paid_amount).toLocaleString()}</td>
-                                                        <td className="p-4 text-right">
+                                                    <tr key={sale.id} className="border-b border-[hsl(var(--border))] last:border-0 hover:bg-[hsl(var(--muted)/0.3)] transition-colors group">
+                                                        <td className="px-10 py-6 font-mono text-[11px] text-[hsl(var(--muted-foreground))]">{new Date(sale.created_at).toLocaleString()}</td>
+                                                        <td className="px-10 py-6 font-black uppercase text-[11px]">{sale.branch_name || 'Global'}</td>
+                                                        <td className="px-10 py-6 text-[13px] font-black uppercase tracking-tight">{sale.vendor}</td>
+                                                        <td className="px-10 py-6 font-mono text-[13px] text-emerald-600 font-black">{sale.actual_product_quality}%</td>
+                                                        <td className="px-10 py-6 font-mono text-[13px] font-black">{sale.actual_process_weight}g</td>
+                                                        <td className="px-10 py-6 font-black text-sm">${Number(sale.paid_amount).toLocaleString()}</td>
+                                                        <td className="px-10 py-6 text-right">
                                                             <button
                                                                 onClick={() => setSelectedSale(sale)}
-                                                                className="p-3 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] rounded-xl transition-all"
+                                                                className="p-4 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.1)] rounded-2xl transition-all"
                                                                 title="View Bill"
                                                             >
-                                                                <Eye size={16} />
+                                                                <Eye size={18} />
                                                             </button>
                                                         </td>
                                                     </tr>
@@ -935,23 +950,23 @@ const AdminDashboard = () => {
                                     <table className="w-full text-left border-collapse">
                                         <thead className="bg-[hsl(var(--muted))] text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border-b border-[hsl(var(--border))]">
                                             <tr>
-                                                <th className="p-6">Posting Date</th>
-                                                <th className="p-6">Origin Entity</th>
-                                                <th className="p-6">Procurement Source</th>
-                                                <th className="p-6">Volume (g)</th>
-                                                <th className="p-6">Rate/g</th>
-                                                <th className="p-6 text-right">Settlement (USD)</th>
+                                                <th className="px-10 py-6">Posting Date</th>
+                                                <th className="px-10 py-6">Origin Entity</th>
+                                                <th className="px-10 py-6">Procurement Source</th>
+                                                <th className="px-10 py-6">Volume (g)</th>
+                                                <th className="px-10 py-6">Rate/g</th>
+                                                <th className="px-10 py-6 text-right">Settlement (USD)</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-[hsl(var(--border))]">
                                             {expenses.map(exp => (
                                                 <tr key={exp.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors">
-                                                    <td className="p-6 font-mono text-xs">{exp.date}</td>
-                                                    <td className="p-6 font-black uppercase text-[11px]">{exp.branch_name || 'Global HQ'}</td>
-                                                    <td className="p-6 text-sm font-bold">{exp.source_name}</td>
-                                                    <td className="p-6 font-mono font-bold">{exp.grams}</td>
-                                                    <td className="p-6 font-mono text-[hsl(var(--muted-foreground))]">${exp.rate_per_gram}</td>
-                                                    <td className="p-6 text-right font-black text-red-500">-${Number(exp.total).toLocaleString()}</td>
+                                                    <td className="px-10 py-6 font-mono text-xs">{exp.date}</td>
+                                                    <td className="px-10 py-6 font-black uppercase text-[11px]">{exp.branch_name || 'Global HQ'}</td>
+                                                    <td className="px-10 py-6 text-sm font-bold">{exp.source_name}</td>
+                                                    <td className="px-10 py-6 font-mono font-bold">{exp.grams} g</td>
+                                                    <td className="px-10 py-6 font-mono text-[hsl(var(--muted-foreground))]">${exp.rate_per_gram}</td>
+                                                    <td className="px-10 py-6 text-right font-black text-red-500">-${Number(exp.total).toLocaleString()}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -971,19 +986,19 @@ const AdminDashboard = () => {
                                     <table className="w-full text-left border-collapse relative">
                                         <thead className="sticky top-0 bg-[hsl(var(--card))] z-10 text-[10px] font-black uppercase tracking-widest text-[hsl(var(--muted-foreground))] border-b border-[hsl(var(--border))]">
                                             <tr>
-                                                <th className="p-6">Density Level</th>
-                                                <th className="p-6">Purity Equiv (%)</th>
-                                                <th className="p-6 text-right">Operations</th>
+                                                <th className="px-10 py-6">Density Level</th>
+                                                <th className="px-10 py-6">Purity Equiv (%)</th>
+                                                <th className="px-10 py-6 text-right">Operations</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-[hsl(var(--border))]">
                                             {matrixList.map(item => (
                                                 <tr key={item.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors">
-                                                    <td className="p-6 font-mono font-black text-sm">{item.density}</td>
-                                                    <td className="p-6 font-mono text-sm text-emerald-600 font-black">{item.purity}%</td>
-                                                    <td className="p-6 text-right">
-                                                        <button onClick={() => deleteMatrixEntry(item.id)} className="p-2 text-[hsl(var(--muted-foreground))] hover:text-red-500 transition-colors">
-                                                            <Trash2 size={16} />
+                                                    <td className="px-10 py-6 font-mono font-black text-sm">{item.density}</td>
+                                                    <td className="px-10 py-6 font-mono text-sm text-emerald-600 font-black">{item.purity}%</td>
+                                                    <td className="px-10 py-6 text-right">
+                                                        <button onClick={() => deleteMatrixEntry(item.id)} className="p-4 text-[hsl(var(--muted-foreground))] hover:text-red-500 transition-colors">
+                                                            <Trash2 size={18} />
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -1082,12 +1097,38 @@ const AdminDashboard = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-[hsl(var(--border))]">
+                                                {/* Pending Actions */}
+                                                {pendingActions.map(action => (
+                                                    <tr key={`pending-${action.id}`} className="bg-amber-500/5 border-b border-amber-200/20 group">
+                                                        <td className="px-10 py-6 font-mono text-[11px] text-amber-600">
+                                                            {new Date(action.timestamp).toLocaleString()}
+                                                            <span className="block text-[8px] font-black uppercase mt-1">Pending Sync</span>
+                                                        </td>
+                                                        <td className="px-10 py-6">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-6 h-6 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600">
+                                                                    <RefreshCw size={12} className="animate-spin" />
+                                                                </div>
+                                                                <p className="text-xs font-black uppercase tracking-tight">{user?.username}</p>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-10 py-6">
+                                                            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md bg-amber-500/20 text-amber-700 border border-amber-500/20">
+                                                                {action.type.replace(/_/g, ' ')}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-10 py-6 text-[12px] font-bold text-amber-700/70 italic">
+                                                            Scheduled for global synchronization: {JSON.stringify(action.payload).substring(0, 50)}...
+                                                        </td>
+                                                    </tr>
+                                                ))}
+
                                                 {adminLogs.map(log => (
                                                     <tr key={log.id} className="hover:bg-[hsl(var(--muted)/0.3)] transition-colors group">
-                                                        <td className="p-6 font-mono text-[11px] text-[hsl(var(--muted-foreground))]">
+                                                        <td className="px-10 py-6 font-mono text-[11px] text-[hsl(var(--muted-foreground))]">
                                                             {new Date(log.created_at).toLocaleString()}
                                                         </td>
-                                                        <td className="p-6">
+                                                        <td className="px-10 py-6">
                                                             <div className="flex items-center gap-2">
                                                                 <div className="w-6 h-6 rounded-lg bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[hsl(var(--primary))]">
                                                                     <Command size={12} />
@@ -1096,7 +1137,7 @@ const AdminDashboard = () => {
                                                                     <p className="text-[9px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-widest">{log.role}</p>
                                                                 </div>
                                                         </td>
-                                                        <td className="p-6">
+                                                        <td className="px-10 py-6">
                                                             <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${
                                                                 log.action.includes('DELETE') || log.action.includes('REVOKE') ? 'bg-red-500/10 text-red-500' :
                                                                 log.action.includes('CREATE') ? 'bg-emerald-500/10 text-emerald-500' :
@@ -1105,7 +1146,7 @@ const AdminDashboard = () => {
                                                                 {log.action.replace(/_/g, ' ')}
                                                             </span>
                                                         </td>
-                                                        <td className="p-6 text-[12px] font-bold text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors">
+                                                        <td className="px-10 py-6 text-[12px] font-bold text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors">
                                                             {log.details}
                                                         </td>
                                                     </tr>
@@ -1132,7 +1173,7 @@ const AdminDashboard = () => {
                 {/* Sale Bill Overlay */}
                 {selectedSale && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 print:p-0 print:bg-white print:backdrop-blur-none print:static">
-                        <div className="bg-white text-zinc-900 w-full max-w-[90rem] h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col print:shadow-none print:border-none print:w-full print:h-auto print:overflow-visible border border-white/20">
+                        <div id="receipt-modal-container" className="bg-white text-zinc-900 w-full max-w-[90rem] h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col print:shadow-none print:border-none print:w-full print:h-auto print:overflow-visible border border-white/20">
                             {/* Modal Actions */}
                             <div className="p-8 bg-zinc-50 border-b flex justify-between items-center print:hidden">
                                 <div>
@@ -1170,7 +1211,7 @@ const AdminDashboard = () => {
                                             </div>
                                             <div className="flex gap-4 justify-end">
                                                 <span className="font-bold">PO#:</span>
-                                                <span className="font-mono">PN{selectedSale.id ? String(selectedSale.id).split('-')[0].toUpperCase() : '---'}</span>
+                                                <span className="font-mono">{selectedSale.bill_number || `PN${String(selectedSale.id || '').split('-')[0].toUpperCase()}`}</span>
                                             </div>
                                         </div>
                                     </div>

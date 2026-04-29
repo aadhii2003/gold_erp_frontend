@@ -23,13 +23,15 @@ import {
     History as HistoryIcon,
     X,
     FileDown,
-    Eye
+    Eye,
+    RefreshCw
 } from 'lucide-react';
 import { 
     saveUsersOffline, getUsersOffline,
     saveExpensesOffline, getExpensesOffline,
     saveLogsOffline, getLogsOffline,
-    queueAction
+    saveGlobalSalesOffline, getGlobalSalesOffline,
+    queueAction, getPendingActions
 } from '../../db/indexedDB';
 import { syncAllData } from '../../utils/syncManager';
 
@@ -46,6 +48,7 @@ const ManagerDashboard = () => {
     const [newPassword, setNewPassword] = useState('');
 
     const [sales, setSales] = useState<any[]>([]);
+    const [pendingActions, setPendingActions] = useState<any[]>([]);
     const [staffList, setStaffList] = useState<any[]>([]);
     
     // Expense State
@@ -63,6 +66,7 @@ const ManagerDashboard = () => {
             fetchSales();
             fetchStaff();
             fetchExpenses();
+            getPendingActions().then(setPendingActions);
         }
 
         const handleOnline = () => {
@@ -70,6 +74,7 @@ const ManagerDashboard = () => {
                 fetchSales();
                 fetchStaff();
                 fetchExpenses();
+                getPendingActions().then(setPendingActions);
             });
         };
         window.addEventListener('online', handleOnline);
@@ -80,7 +85,12 @@ const ManagerDashboard = () => {
         try {
             const res = await apiClient.get('/sales/');
             setSales(res.data);
-        } catch(e) { console.error(e); }
+            await saveGlobalSalesOffline(res.data);
+        } catch(e) { 
+            console.error(e); 
+            const offlineSales = await getGlobalSalesOffline();
+            if (offlineSales.length > 0) setSales(offlineSales);
+        }
     };
 
     const fetchStaff = async () => {
@@ -133,6 +143,7 @@ const ManagerDashboard = () => {
             setNewPassword('');
             fetchStaff();
         } catch(e) { alert('Account creation failed.'); }
+        getPendingActions().then(setPendingActions);
     };
 
     const expenseTotal = (ratePerGram !== '' && grams !== '') ? Number(ratePerGram) * Number(grams) : 0;
@@ -166,6 +177,7 @@ const ManagerDashboard = () => {
             fetchExpenses();
             alert('Expense added successfully.');
         } catch (e) { alert('Failed to record expense.'); }
+        getPendingActions().then(setPendingActions);
     };
 
     const toggleUserStatus = async (id: number) => {
@@ -284,7 +296,19 @@ const ManagerDashboard = () => {
                     {/* Dashboard Tab */}
                     {activeTab === 'dashboard' && (
                         <div className="space-y-8 animate-in fade-in duration-500">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div className={`grid grid-cols-1 ${pendingActions.length > 0 ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-8`}>
+                                {pendingActions.length > 0 && (
+                                    <div className="bg-amber-500/5 border border-amber-200 p-8 rounded-[2rem] shadow-sm animate-pulse">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <p className="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em]">Outbox</p>
+                                            <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600">
+                                                <RefreshCw size={20} className="animate-spin" />
+                                            </div>
+                                        </div>
+                                        <p className="text-3xl font-black text-amber-700 tracking-tighter">{pendingActions.length}</p>
+                                        <p className="text-[9px] font-black uppercase text-amber-600/60 mt-2">Pending Global Sync</p>
+                                    </div>
+                                )}
                                 {[
                                     { label: 'Branch Revenue', value: `$${sales.reduce((acc, s) => acc + Number(s.subtotal), 0).toLocaleString()}`, icon: TrendingUp, color: 'text-emerald-500' },
                                     { label: 'Transactions', value: sales.length, icon: ReceiptText, color: 'text-blue-500' },
@@ -539,7 +563,7 @@ const ManagerDashboard = () => {
             {/* Sale Bill Overlay */}
                 {selectedSale && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 print:p-0 print:bg-white print:backdrop-blur-none print:static">
-                        <div className="bg-white text-zinc-900 w-full max-w-[90rem] h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col print:shadow-none print:border-none print:w-full print:h-auto print:overflow-visible border border-white/20">
+                        <div id="receipt-modal-container" className="bg-white text-zinc-900 w-full max-w-[90rem] h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col print:shadow-none print:border-none print:w-full print:h-auto print:overflow-visible border border-white/20">
                             {/* Modal Actions */}
                             <div className="p-8 bg-zinc-50 border-b flex justify-between items-center print:hidden">
                                 <div>
@@ -577,7 +601,7 @@ const ManagerDashboard = () => {
                                             </div>
                                             <div className="flex gap-4 justify-end">
                                                 <span className="font-bold">PO#:</span>
-                                                <span className="font-mono">PN{selectedSale.id ? String(selectedSale.id).split('-')[0].toUpperCase() : '---'}</span>
+                                                <span className="font-mono">{selectedSale.bill_number || `PN${String(selectedSale.id || '').split('-')[0].toUpperCase()}`}</span>
                                             </div>
                                         </div>
                                     </div>

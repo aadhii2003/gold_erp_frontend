@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { User, Lock, ArrowRight, ShieldCheck, Landmark, Moon, Sun, Eye, EyeOff } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { getConstantsOffline, getUsersOffline } from '../../db/indexedDB';
 
 const Login = () => {
     const [username, setUsername] = useState('');
@@ -21,6 +22,7 @@ const Login = () => {
         e.preventDefault();
         setLoading(true);
         setError('');
+
         try {
             const res = await apiClient.post('/auth/login/', { username, password });
             const decoded: any = jwtDecode(res.data.access);

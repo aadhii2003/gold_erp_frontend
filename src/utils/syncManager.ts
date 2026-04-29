@@ -43,14 +43,14 @@ export const syncAllData = async () => {
                     method = 'delete';
                     break;
                 case 'CREATE_BRANCH':
-                    endpoint = '/branches/';
+                    endpoint = '/branches/create/';
                     break;
                 case 'DELETE_BRANCH':
                     endpoint = `/branches/${action.payload.id}/`;
                     method = 'delete';
                     break;
                 case 'UPDATE_RATES':
-                    endpoint = '/gold-rates/update/';
+                    endpoint = '/rates/';
                     break;
                 case 'CREATE_MATRIX':
                     endpoint = '/density-purity/';

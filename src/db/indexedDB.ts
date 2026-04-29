@@ -10,7 +10,7 @@ const CONST_STORE = 'constants';
 const OUTBOX_STORE = 'outbox';
 
 export const initDB = async () => {
-    return openDB(DB_NAME, 4, {
+    return openDB(DB_NAME, 5, { // Bump version
         upgrade(db, oldVersion, newVersion) {
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -32,6 +32,12 @@ export const initDB = async () => {
             }
             if (!db.objectStoreNames.contains(OUTBOX_STORE)) {
                 db.createObjectStore(OUTBOX_STORE, { keyPath: 'id', autoIncrement: true });
+            }
+            if (!db.objectStoreNames.contains('global_sales')) {
+                db.createObjectStore('global_sales', { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains('matrix')) {
+                db.createObjectStore('matrix', { keyPath: 'id', autoIncrement: true });
             }
         },
     });
@@ -124,6 +130,32 @@ export const saveLogsOffline = async (logs: any[]) => {
 export const getLogsOffline = async () => {
     const db = await initDB();
     return db.getAll(LOG_STORE);
+};
+
+export const saveGlobalSalesOffline = async (sales: any[]) => {
+    const db = await initDB();
+    const tx = db.transaction('global_sales', 'readwrite');
+    await tx.store.clear();
+    for (const s of sales) await tx.store.put(s);
+    await tx.done;
+};
+
+export const getGlobalSalesOffline = async () => {
+    const db = await initDB();
+    return db.getAll('global_sales');
+};
+
+export const saveMatrixOffline = async (matrix: any[]) => {
+    const db = await initDB();
+    const tx = db.transaction('matrix', 'readwrite');
+    await tx.store.clear();
+    for (const m of matrix) await tx.store.put(m);
+    await tx.done;
+};
+
+export const getMatrixOffline = async () => {
+    const db = await initDB();
+    return db.getAll('matrix');
 };
 
 export const saveConstantsOffline = async (type: string, data: any[]) => {
