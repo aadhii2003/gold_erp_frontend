@@ -107,9 +107,21 @@
   }
 
   /* Custom Scrollbar from Reference */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: hsl(var(--background)); }
-  ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground)); border-radius: 10px; }
+  /* Custom Scrollbar Utility */
+  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.2); border-radius: 20px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.3); }
+
+  @keyframes progress-glow {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+  }
+
+  .progress-bar-animate {
+    animation: progress-glow 2s ease-in-out infinite;
+  }
 }
 
 /* Remove number input spinners */

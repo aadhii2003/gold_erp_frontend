@@ -35,7 +35,9 @@ const Login = () => {
             
             dispatch(setCredentials({ token: res.data.access, user }));
             
-            if (user.role === 'STAFF') {
+            if (user.role === 'SUPER_ADMIN') {
+                navigate('/superadmin');
+            } else if (user.role === 'STAFF') {
                 navigate('/pos');
             } else if (user.role === 'MANAGER') {
                 navigate('/manager');

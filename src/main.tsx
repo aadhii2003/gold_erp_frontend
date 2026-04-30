@@ -8,17 +8,14 @@ import Login from './features/auth/Login';
 import POS from './features/sales/POS';
 import AdminDashboard from './features/admin/AdminDashboard';
 import ManagerDashboard from './features/manager/ManagerDashboard';
+import SuperAdminDashboard from './features/superadmin/SuperAdminDashboard';
 import './index.css';
 import { ThemeProvider } from './context/ThemeContext';
 import { seedAdmin } from './db/indexedDB';
-
 import { registerSW } from 'virtual:pwa-register';
 
 // Register PWA Service Worker
 registerSW({ immediate: true });
-
-// Seed initial credentials for offline-first development
-seedAdmin().catch(console.error);
 
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Failed to find the root element');
@@ -35,6 +32,7 @@ ReactDOM.createRoot(rootElement).render(
               <Route path="pos" element={<POS />} />
               <Route path="admin" element={<AdminDashboard />} />
               <Route path="manager" element={<ManagerDashboard />} />
+              <Route path="superadmin" element={<SuperAdminDashboard />} />
             </Route>
           </Routes>
         </BrowserRouter>
